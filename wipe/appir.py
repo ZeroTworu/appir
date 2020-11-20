@@ -34,6 +34,10 @@ class Appir(object):  # noqa: WPS214
 
         self.driver = webdriver.Firefox(options=self.options, firefox_profile=self.profile)
 
+    @property
+    def _is_whereby_open(self) -> bool:
+        return 'Whereby' in self.driver.title
+
     def enter_room(self, room_url: str) -> None:
         username = f'{uuid.uuid4()}'
 
@@ -63,7 +67,7 @@ class Appir(object):  # noqa: WPS214
         self.users[self.driver.current_window_handle] = username
         logging.info('User %s login', username)
 
-    def exit_room(self):
+    def exit_room(self) -> None:
         current_window = self.driver.current_window_handle
         user = self.users[current_window]
         exit_btn = self.driver.find_element_by_class_name('jstest-leave-room-button')
@@ -71,7 +75,7 @@ class Appir(object):  # noqa: WPS214
         self._close_tab(current_window)
         logging.info('User %s left room', user)
 
-    def try_stop_youtube(self):
+    def try_stop_youtube(self) -> None:
         logging.info('Try stop youtube')
         try:
             self.driver.find_element_by_xpath('//div[contains(text(), "Stop sharing")]').click()
@@ -83,15 +87,11 @@ class Appir(object):  # noqa: WPS214
             self.driver.switch_to.window(window)
             time.sleep(0.1)
             try:
-                self.driver.find_element_by_xpath('//h1[contains(text(), "Meeting ended")]')
-                self._close_tab(window)
-                logging.warning('User %s kicked', user)
-                if callback is not None:
-                    return callback(user)
+                self._check_ban(window, user, callback)
             except NoSuchElementException:
-                pass
+                pass  # noqa: WPS420
 
-    def send_chat(self, msg: str):
+    def send_chat(self, msg: str) -> None:
         chat_btn = WebDriverWait(self.driver, self.max_timeout).until(
             EC.presence_of_element_located((By.CLASS_NAME, 'jstest-open-chat-button')),
         )
@@ -107,7 +107,7 @@ class Appir(object):  # noqa: WPS214
         send_btn = self.driver.find_element_by_xpath('//div[contains(text(), "Send")]')
         send_btn.click()
 
-    def start_youtube(self, link: str):
+    def start_youtube(self, link: str) -> None:
         self.send_chat(link)
 
         start_youtube = WebDriverWait(self.driver, self.max_timeout).until(
@@ -116,43 +116,48 @@ class Appir(object):  # noqa: WPS214
 
         start_youtube.click()
 
+    def _check_ban(self, window: str, user: str, callback: Callable):
+        self.driver.find_element_by_xpath('//h1[contains(text(), "Meeting ended")]')
+        self._close_tab(window)
+        logging.warning('User %s kicked', user)
+        if callback is not None:
+            return callback(user)
+
     def _fix_cam_mic(self) -> None:
         settings = self.driver.find_elements_by_tag_name('figure')[:2]
         for btn in settings:
             btn.click()
 
-    @property
-    def _is_whereby_open(self) -> bool:
-        return 'Whereby' in self.driver.title
-
-    def _open_new_tab(self):
+    def _open_new_tab(self) -> None:
         current_windows_count = len(self.driver.window_handles)
 
         self.driver.execute('SET_CONTEXT', {'context': 'chrome'})
         self._send_keys_to_url_bar(Keys.CONTROL, 't')
 
-        WebDriverWait(self.driver, self.max_timeout).until(EC.number_of_windows_to_be(current_windows_count + 1))
+        WebDriverWait(self.driver, self.max_timeout).until(
+            EC.number_of_windows_to_be(current_windows_count + 1),
+        )
 
         self.driver.execute('SET_CONTEXT', {'context': 'content'})
         self._switch_tab_forward()
 
-    def _close_tab(self, window_handler):
+    def _close_tab(self, window_handler) -> None:
         self.users.pop(window_handler)
         self.driver.execute('SET_CONTEXT', {'context': 'chrome'})
         self._send_keys_to_url_bar(Keys.CONTROL, 'w')
         self.driver.execute('SET_CONTEXT', {'context': 'content'})
         self._switch_tab_back()
 
-    def _switch_tab_forward(self):
+    def _switch_tab_forward(self) -> None:
         self.driver.switch_to.window(self.driver.window_handles[-1])
 
-    def _switch_tab_back(self):
+    def _switch_tab_back(self) -> None:
         back = len(self.driver.window_handles) - 1
         if back > -1:
             self.driver.switch_to.window(self.driver.window_handles[back])
         else:
             self.driver.switch_to.window(self.driver.window_handles[0])
 
-    def _send_keys_to_url_bar(self, *value):
+    def _send_keys_to_url_bar(self, *value) -> None:
         url_bar = self.driver.find_element_by_id('urlbar')
         url_bar.send_keys(value)

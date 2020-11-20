@@ -77,8 +77,8 @@ class YouTubeStrategy(WipeStrategy):
             self.appir.exit_room()
 
     def _ban_callback(self, *args, **kwargs):
-        pass
+        raise NotImplementedError
 
     def _parse_youtube_file(self, file):
-        with open(file, 'r') as f:
-            self.links = f.readlines()
+        with open(file, 'r') as read:
+            self.links = read.readlines()  # noqa: WPS601

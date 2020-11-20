@@ -13,7 +13,7 @@ strategies = {
 
 
 def parse_args(args) -> dict:
-    result = vars(args)
+    result = vars(args)  # noqa: WPS421
     result.pop('strategy')
     result.pop('url')
     return result
