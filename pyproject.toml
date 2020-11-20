@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "appir-wipe"
+version = "0.1.0"
+description = "fuck shizics"
+authors = ["hanyuu furude"]
+license = "MIT"
+
+[tool.poetry.dependencies]
+python = "^3.8"
+selenium = "^3.141.0"
+
+[tool.poetry.dev-dependencies]
+wemake-python-styleguide = "^0.14.1"
+
+[build-system]
+requires = ["poetry>=0.12"]
+build-backend = "poetry.masonry.api"

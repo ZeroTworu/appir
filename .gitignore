@@ -1,0 +1,21 @@
+# Basics
+*.py[cod]
+__pycache__
+.mypy_cache
+venv/
+
+# Pycharm
+.idea/*
+
+# VSCode
+.vscode/*
+
+.DS_Store
+
+# Celery
+celerybeat-schedule.db
+celerybeat.pid
+celerybeat-schedule*
+
+vars.sh
+geckodriver.log
