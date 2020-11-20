@@ -19,3 +19,4 @@ celerybeat-schedule*
 
 vars.sh
 geckodriver.log
+youtube.txt

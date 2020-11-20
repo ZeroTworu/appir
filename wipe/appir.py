@@ -29,6 +29,7 @@ class Appir(object):  # noqa: WPS214
         self.profile.set_preference('browser.tabs.remote.autostart.1', True)
         self.profile.set_preference('browser.tabs.remote.autostart.2', True)
         self.profile.set_preference('browser.privatebrowsing.autostart', True)
+        self.profile.set_preference('media.volume_scale', '0.0')
         self.profile.update_preferences()
 
         self.driver = webdriver.Firefox(options=self.options, firefox_profile=self.profile)
@@ -47,7 +48,11 @@ class Appir(object):  # noqa: WPS214
 
         enter_name.send_keys(username)
 
-        self.driver.find_element_by_xpath('//div[contains(text(), "Continue")]').click()
+        continue_btn = WebDriverWait(self.driver, self.max_timeout).until(
+            EC.presence_of_element_located((By.XPATH, '//div[contains(text(), "Continue")]')),
+        )
+
+        continue_btn.click()
 
         join_btn = WebDriverWait(self.driver, self.max_timeout).until(
             EC.presence_of_element_located((By.XPATH, '//div[contains(text(), "Join meeting")]')),
@@ -57,6 +62,21 @@ class Appir(object):  # noqa: WPS214
         join_btn.click()
         self.users[self.driver.current_window_handle] = username
         logging.info('User %s login', username)
+
+    def exit_room(self):
+        current_window = self.driver.current_window_handle
+        user = self.users[current_window]
+        exit_btn = self.driver.find_element_by_class_name('jstest-leave-room-button')
+        exit_btn.click()
+        self._close_tab(current_window)
+        logging.info('User %s left room', user)
+
+    def try_stop_youtube(self):
+        logging.info('Try stop youtube')
+        try:
+            self.driver.find_element_by_xpath('//div[contains(text(), "Stop sharing")]').click()
+        except NoSuchElementException:
+            logging.warning('No stop youtube btn')
 
     def check_ban(self, callback: Callable = None):
         for window, user in self.users.items():
@@ -118,13 +138,8 @@ class Appir(object):  # noqa: WPS214
 
     def _close_tab(self, window_handler):
         self.users.pop(window_handler)
-        current_windows_count = len(self.driver.window_handles)
-
         self.driver.execute('SET_CONTEXT', {'context': 'chrome'})
         self._send_keys_to_url_bar(Keys.CONTROL, 'w')
-
-        WebDriverWait(self.driver, self.max_timeout).until(EC.number_of_windows_to_be(current_windows_count - 1))
-
         self.driver.execute('SET_CONTEXT', {'context': 'content'})
         self._switch_tab_back()
 
@@ -132,7 +147,11 @@ class Appir(object):  # noqa: WPS214
         self.driver.switch_to.window(self.driver.window_handles[-1])
 
     def _switch_tab_back(self):
-        self.driver.switch_to.window(self.driver.window_handles[0])
+        back = len(self.driver.window_handles) - 1
+        if back > -1:
+            self.driver.switch_to.window(self.driver.window_handles[back])
+        else:
+            self.driver.switch_to.window(self.driver.window_handles[0])
 
     def _send_keys_to_url_bar(self, *value):
         url_bar = self.driver.find_element_by_id('urlbar')
