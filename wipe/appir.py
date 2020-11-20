@@ -1,45 +1,40 @@
 import atexit
 import logging
-import random
 import time
 import uuid
-from typing import Callable, Dict
+from typing import Callable, Dict, List
+import random
 
+from selenium.common.exceptions import NoSuchElementException
 from selenium import webdriver
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.firefox.options import FirefoxProfile, Options
 from selenium.webdriver.support import expected_conditions as EC  # noqa: N812
 from selenium.webdriver.support.ui import WebDriverWait
+
+from wipe.browsers import Chrome, Firefox
+
+drivers = {
+    'firefox': Firefox,
+    'chrome': Chrome,
+}
 
 
 class Appir(object):  # noqa: WPS214
 
     max_timeout = 60  # in seconds
 
-    users: Dict[str, str] = {}
+    users: List[dict] = []
 
-    def __init__(self, headless: bool = True, knock: bool = True):
-        self.options = Options()
-        self.options.headless = headless
-        self.profile = FirefoxProfile()
-        self.profile.set_preference('media.navigator.permission.disabled', True)
-        self.profile.set_preference('permissions.default.microphone', 0)
-        self.profile.set_preference('permissions.default.camera', 0)
-        self.profile.set_preference('browser.tabs.remote.autostart', True)
-        self.profile.set_preference('browser.tabs.remote.autostart.1', True)
-        self.profile.set_preference('browser.tabs.remote.autostart.2', True)
-        self.profile.set_preference('browser.privatebrowsing.autostart', True)
-        self.profile.set_preference('media.volume_scale', '0.0')
-        self.profile.update_preferences()
-
-        self.knock = knock
-        self.global_lock = False
-        self.room_url = ''
-
-        self.driver = webdriver.Firefox(options=self.options, firefox_profile=self.profile)
-        atexit.register(self.driver.quit)
+    def __init__(self, headless: bool = True, browser: str = 'firefox'):
+        driver_class = drivers.get(browser.lower(), None)
+        if driver_class is None:
+            logging.error('Unknown browser %s', browser)
+            return
+        self.browser = browser
+        self.opened_new_tab = False
+        self.driver = driver_class(headless=headless)
 
     @property
     def _is_whereby_open(self) -> bool:
@@ -50,30 +45,36 @@ class Appir(object):  # noqa: WPS214
         self.room_url = room_url
 
         if self._is_whereby_open:
-            self._open_new_tab()
+            self.opened_new_tab = True
+            self.driver.open_new_tab()
 
         self.driver.get(room_url)
 
-        enter_name = WebDriverWait(self.driver, self.max_timeout).until(
-            EC.presence_of_element_located((By.NAME, 'nickname')),
-        )
+        if self.browser == 'chrome' and not self.opened_new_tab:
+            enter_name = WebDriverWait(self.driver, self.max_timeout).until(
+                EC.presence_of_element_located((By.NAME, 'nickname')),
+            )
 
-        enter_name.send_keys(username)
+            enter_name.send_keys(username)
 
-        continue_btn = WebDriverWait(self.driver, self.max_timeout).until(
-            EC.presence_of_element_located((By.XPATH, '//div[contains(text(), "Continue")]')),
-        )
+            continue_btn = WebDriverWait(self.driver, self.max_timeout).until(
+                EC.presence_of_element_located((By.XPATH, '//div[contains(text(), "Continue")]')),
+            )
 
-        continue_btn.click()
+            continue_btn.click()
 
-        if not self.check_locked() and not self.global_lock:
             join_btn = WebDriverWait(self.driver, self.max_timeout).until(
                 EC.presence_of_element_located((By.XPATH, '//div[contains(text(), "Join meeting")]')),
             )
+            self._fix_cam_mic()
 
             join_btn.click()
-        self.global_lock = False
-        self.users[self.driver.current_window_handle] = username
+
+        self.users.append({
+            'username': username,
+            'window': self.driver.current_window_handle
+        })
+
         logging.info('User %s login', username)
 
     def check_locked(self):
@@ -105,7 +106,8 @@ class Appir(object):  # noqa: WPS214
         user = self.users[current_window]
         exit_btn = self.driver.find_element_by_class_name('jstest-leave-room-button')
         exit_btn.click()
-        self._close_tab(current_window)
+        self.driver.close_tab()
+        self.users.pop(current_window)
         logging.info('User %s left room', user)
 
     def try_stop_youtube(self) -> None:
@@ -116,11 +118,18 @@ class Appir(object):  # noqa: WPS214
             logging.warning('No stop youtube btn')
 
     def check_ban(self, callback: Callable = None):
-        for window, user in self.users.items():
-            self.driver.switch_to.window(window)
+        for window_user in self.users:
+            self.driver.switch_to.window(window_user['window'])
+            logging.info('Switch to %s', window_user['window'])
             time.sleep(0.1)
             try:
-                self._check_ban(window, user, callback)
+                self.driver.find_element_by_xpath('//h1[contains(text(), "Meeting ended")]')
+                self.driver.close_tab()
+                window_index = self.users.index(window_user)
+                self.users.pop(window_index)
+                logging.warning('User %s kicked', window_user['username'])
+                if callback is not None:
+                    return callback(window_user['username'])
             except NoSuchElementException:
                 pass  # noqa: WPS420
 

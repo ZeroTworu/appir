@@ -9,8 +9,8 @@ from wipe.appir import Appir
 
 class WipeStrategy(object):
 
-    def __init__(self, room_url: str, params: dict = None, headless: bool = True, knock: bool = False):
-        self.appir = Appir(headless=headless, knock=knock)
+    def __init__(self, room_url: str, browser: str = 'firefox', params: dict = None, headless: bool = True, knock: bool = False):
+        self.appir = Appir(headless=headless, browser=browser, knock=knock)
         self.params = params
         self.room_url = room_url
         self.is_waiting_ban = False
