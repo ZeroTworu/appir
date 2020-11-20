@@ -1,18 +1,18 @@
 import logging
-import uuid
 import time
-from typing import Dict
+import uuid
+from typing import Callable, Dict
 
 from selenium import webdriver
-from selenium.webdriver.firefox.options import Options, FirefoxProfile
-from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.firefox.options import FirefoxProfile, Options
+from selenium.webdriver.support import expected_conditions as EC  # noqa: N812
+from selenium.webdriver.support.ui import WebDriverWait
 
 
-class Appir(object):
+class Appir(object):  # noqa: WPS214
 
     max_timeout = 60  # in seconds
 
@@ -33,17 +33,16 @@ class Appir(object):
 
         self.driver = webdriver.Firefox(options=self.options, firefox_profile=self.profile)
 
-    def enter_room(self, room_link: str) -> None:
+    def enter_room(self, room_url: str) -> None:
         username = f'{uuid.uuid4()}'
-        is_open_room = self._is_room_open()
-        if is_open_room:
-            self._open_new_tab()
-            self._switch_tab_forward()
 
-        self.driver.get(room_link)
+        if self._is_whereby_open:
+            self._open_new_tab()
+
+        self.driver.get(room_url)
 
         enter_name = WebDriverWait(self.driver, self.max_timeout).until(
-            EC.presence_of_element_located((By.NAME, 'nickname'))
+            EC.presence_of_element_located((By.NAME, 'nickname')),
         )
 
         enter_name.send_keys(username)
@@ -51,68 +50,36 @@ class Appir(object):
         self.driver.find_element_by_xpath('//div[contains(text(), "Continue")]').click()
 
         join_btn = WebDriverWait(self.driver, self.max_timeout).until(
-            EC.presence_of_element_located((By.XPATH, '//div[contains(text(), "Join meeting")]'))
+            EC.presence_of_element_located((By.XPATH, '//div[contains(text(), "Join meeting")]')),
         )
         self._fix_cam_mic()
 
         join_btn.click()
-        self.users[username] = self.driver.current_window_handle
+        self.users[self.driver.current_window_handle] = username
         logging.info('User %s login', username)
 
-    def _fix_cam_mic(self) -> None:
-        settings = self.driver.find_elements_by_tag_name('figure')
-        for btn in settings[0:2]:
-            btn.click()
-
-    def _is_room_open(self) -> bool:
-        try:
-            self.driver.find_element_by_class_name('jstest-leave-room-button')
-        except NoSuchElementException:
-            return False
-        return True
-
-    def _open_new_tab(self):
-        self.driver.execute('SET_CONTEXT', {'context': 'chrome'})
-        url_bar = self.driver.find_element_by_id('urlbar')
-        url_bar.send_keys(Keys.CONTROL, 't')
-        self.driver.execute('SET_CONTEXT', {'context': 'content'})
-
-    def _close_tab(self):
-        self.driver.execute('SET_CONTEXT', {'context': 'chrome'})
-        url_bar = self.driver.find_element_by_id('urlbar')
-        url_bar.send_keys(Keys.CONTROL, 'w')
-        self.driver.execute('SET_CONTEXT', {'context': 'content'})
-
-    def _switch_tab_forward(self):
-        self.driver.switch_to.window(self.driver.window_handles[-1])
-
-    def _switch_tab_back(self):
-        back = len(self.driver.window_handles) - 1
-        if back > -1:
-            self.driver.switch_to.window(self.driver.window_handles[back])
-
-    def check_ban(self):
-        for user, window in self.users.items():
+    def check_ban(self, callback: Callable = None):
+        for window, user in self.users.items():
             self.driver.switch_to.window(window)
-            time.sleep(2)
+            time.sleep(0.1)
             try:
                 self.driver.find_element_by_xpath('//h1[contains(text(), "Meeting ended")]')
-                self._close_tab()
-                del self.users[user]
+                self._close_tab(window)
                 logging.warning('User %s kicked', user)
-                return self.check_ban()
+                if callback is not None:
+                    return callback(user)
             except NoSuchElementException:
-                logging.info('User %s steel in room', user)
+                pass
 
     def send_chat(self, msg: str):
         chat_btn = WebDriverWait(self.driver, self.max_timeout).until(
-            EC.presence_of_element_located((By.CLASS_NAME, 'jstest-open-chat-button'))
+            EC.presence_of_element_located((By.CLASS_NAME, 'jstest-open-chat-button')),
         )
 
         chat_btn.click()
 
         message_area = WebDriverWait(self.driver, self.max_timeout).until(
-            EC.presence_of_element_located((By.NAME, 'message'))
+            EC.presence_of_element_located((By.NAME, 'message')),
         )
 
         message_area.send_keys(msg)
@@ -124,7 +91,49 @@ class Appir(object):
         self.send_chat(link)
 
         start_youtube = WebDriverWait(self.driver, self.max_timeout).until(
-            EC.presence_of_element_located((By.XPATH, '//div[contains(text(), "View together in room")]'))
+            EC.presence_of_element_located((By.XPATH, '//div[contains(text(), "View together in room")]')),
         )
 
         start_youtube.click()
+
+    def _fix_cam_mic(self) -> None:
+        settings = self.driver.find_elements_by_tag_name('figure')[:2]
+        for btn in settings:
+            btn.click()
+
+    @property
+    def _is_whereby_open(self) -> bool:
+        return 'Whereby' in self.driver.title
+
+    def _open_new_tab(self):
+        current_windows_count = len(self.driver.window_handles)
+
+        self.driver.execute('SET_CONTEXT', {'context': 'chrome'})
+        self._send_keys_to_url_bar(Keys.CONTROL, 't')
+
+        WebDriverWait(self.driver, self.max_timeout).until(EC.number_of_windows_to_be(current_windows_count + 1))
+
+        self.driver.execute('SET_CONTEXT', {'context': 'content'})
+        self._switch_tab_forward()
+
+    def _close_tab(self, window_handler):
+        self.users.pop(window_handler)
+        current_windows_count = len(self.driver.window_handles)
+
+        self.driver.execute('SET_CONTEXT', {'context': 'chrome'})
+        self._send_keys_to_url_bar(Keys.CONTROL, 'w')
+
+        WebDriverWait(self.driver, self.max_timeout).until(EC.number_of_windows_to_be(current_windows_count - 1))
+
+        self.driver.execute('SET_CONTEXT', {'context': 'content'})
+        self._switch_tab_back()
+
+    def _switch_tab_forward(self):
+        self.driver.switch_to.window(self.driver.window_handles[-1])
+
+    def _switch_tab_back(self):
+        self.driver.switch_to.window(self.driver.window_handles[0])
+
+    def _send_keys_to_url_bar(self, *value):
+        url_bar = self.driver.find_element_by_id('urlbar')
+        url_bar.send_keys(value)
