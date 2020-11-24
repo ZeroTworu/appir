@@ -1,10 +1,12 @@
+import atexit
 import logging
+import random
 import time
 import uuid
 from typing import Callable, Dict
 
 from selenium import webdriver
-from selenium.common.exceptions import NoSuchElementException
+from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.firefox.options import FirefoxProfile, Options
@@ -18,7 +20,7 @@ class Appir(object):  # noqa: WPS214
 
     users: Dict[str, str] = {}
 
-    def __init__(self, headless: bool = True):
+    def __init__(self, headless: bool = True, knock: bool = True):
         self.options = Options()
         self.options.headless = headless
         self.profile = FirefoxProfile()
@@ -32,7 +34,12 @@ class Appir(object):  # noqa: WPS214
         self.profile.set_preference('media.volume_scale', '0.0')
         self.profile.update_preferences()
 
+        self.knock = knock
+        self.global_lock = False
+        self.room_url = ''
+
         self.driver = webdriver.Firefox(options=self.options, firefox_profile=self.profile)
+        atexit.register(self.driver.quit)
 
     @property
     def _is_whereby_open(self) -> bool:
@@ -40,6 +47,7 @@ class Appir(object):  # noqa: WPS214
 
     def enter_room(self, room_url: str) -> None:
         username = f'{uuid.uuid4()}'
+        self.room_url = room_url
 
         if self._is_whereby_open:
             self._open_new_tab()
@@ -58,14 +66,39 @@ class Appir(object):  # noqa: WPS214
 
         continue_btn.click()
 
-        join_btn = WebDriverWait(self.driver, self.max_timeout).until(
-            EC.presence_of_element_located((By.XPATH, '//div[contains(text(), "Join meeting")]')),
-        )
-        self._fix_cam_mic()
+        if not self.check_locked() and not self.global_lock:
+            join_btn = WebDriverWait(self.driver, self.max_timeout).until(
+                EC.presence_of_element_located((By.XPATH, '//div[contains(text(), "Join meeting")]')),
+            )
 
-        join_btn.click()
+            join_btn.click()
+        self.global_lock = False
         self.users[self.driver.current_window_handle] = username
         logging.info('User %s login', username)
+
+    def check_locked(self):
+        knock_btn = None
+        try:
+            knock_btn = WebDriverWait(self.driver, 2).until(
+                EC.presence_of_element_located((By.XPATH, '//div[contains(text(), "Knock")]')),
+            )
+        except TimeoutException:
+            return False
+
+        self.global_lock = True
+        self._fix_cam_mic()
+
+        if knock_btn is not None:
+            knock_btn.click()
+        wait_time = random.randint(5, 20)
+        logging.info('Knock in %s, sleep %d...',self.room_url, wait_time)
+        time.sleep(wait_time)
+
+        cancel_btn = WebDriverWait(self.driver, self.max_timeout).until(
+            EC.presence_of_element_located((By.XPATH, '//div[contains(text(), "Cancel")]')),
+        )
+        cancel_btn.click()
+        return self.check_locked()
 
     def exit_room(self) -> None:
         current_window = self.driver.current_window_handle

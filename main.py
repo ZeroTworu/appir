@@ -16,10 +16,12 @@ def parse_args(args) -> dict:
     result = vars(args)  # noqa: WPS421
     result.pop('strategy')
     result.pop('url')
+    result.pop('knock')
+    result.pop('headless')
     return result
 
 
-if __name__ == '__main__':
+def handle_main():
     parser = argparse.ArgumentParser(description='Appir Wipe v0.0.1.', formatter_class=RawTextHelpFormatter)
     parser.add_argument(
         'strategy',
@@ -34,6 +36,8 @@ if __name__ == '__main__':
     )
     parser.add_argument('--link', help='youtube link')
     parser.add_argument('--file', help='file with youtube links, one line - one link')
+    parser.add_argument('--knock', help='knock to conference if locked', default='1')
+    parser.add_argument('--headless', help='if 0 run without GUI', default='1')
 
     args = parser.parse_args()
 
@@ -41,6 +45,16 @@ if __name__ == '__main__':
 
     if strategy_class is None:
         logging.error('Wrong strategy %s, write it by you self!', args.strategy)
+        return
 
-    strategy = strategy_class(room_url=args.url, params=parse_args(args))
+    strategy = strategy_class(
+        room_url=args.url,
+        headless=args.headless == '1',
+        knock=args.knock == '1',
+        params=parse_args(args),
+    )
     strategy.run_strategy()
+
+
+if __name__ == '__main__':
+    handle_main()
