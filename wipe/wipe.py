@@ -3,17 +3,25 @@ import logging
 import random
 import time
 
-from selenium.common.exceptions import NoSuchElementException
 from wipe.appir import Appir
 
 
 class WipeStrategy(object):
 
-    def __init__(self, room_url: str, browser: str = 'firefox', params: dict = None, headless: bool = True, knock: bool = False):
+    def __init__(
+        self,
+        room_url: str,
+        browser: str = 'firefox',
+        headless: bool = True,
+        knock: bool = False,
+    ):
         self.appir = Appir(headless=headless, browser=browser, knock=knock)
-        self.params = params
+        self.params = {}
         self.room_url = room_url
         self.is_waiting_ban = False
+
+    def set_params(self, params: dict = None):
+        self.params = params
 
     def wait_ban(self):
         while self.is_waiting_ban:
@@ -30,28 +38,25 @@ class WipeStrategy(object):
 
 class FillRoomStrategy(WipeStrategy):
 
+    max_timeout = 1.5
+
     def run_strategy(self):
         while True:
             self.appir.enter_room(room_url=self.room_url)
-            if self._is_fool:
+            if self.appir.is_fool:
+
+                self.appir.users.pop(self.appir.driver.window_handles[-1])
+                self.appir.driver.close_tab()
                 self.is_waiting_ban = True
+
                 logging.info('Room %s fool, waiting for bans...', self.room_url)
                 self.wait_ban()
-
-    @property
-    def _is_fool(self):
-        try:
-            self.appir.driver.find_element_by_xpath('//h1[contains(text(), "Sorry, this room is full")]')
-        except NoSuchElementException:
-            return False
-        return True
 
     def _ban_callback(self, *args, **kwargs):
         self.is_waiting_ban = False
 
 
 class YouTubeStrategy(WipeStrategy):
-
     links = None
 
     def run_strategy(self):

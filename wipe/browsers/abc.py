@@ -2,6 +2,7 @@ import abc
 
 
 class ABCWipeDriver(object):
+    max_timeout = 5
 
     @abc.abstractmethod
     def close_tab(self) -> None:
