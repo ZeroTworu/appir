@@ -19,13 +19,12 @@ class Chrome(webdriver.Chrome, ABCWipeDriver):
             self.options.add_argument('--headless')
 
         self.options.add_argument('--disable-gpu')
-        self.options.add_argument('--incognito')
         self.options.add_argument('--mute-audio')
         self.options.add_argument('--no-sandbox')
-
+        self.options.add_argument('--incognito')
         if fake_media:
-            self.options.add_argument('use-fake-device-for-media-stream')
-            self.options.add_argument('use-fake-ui-for-media-stream')
+            self.options.add_argument('--use-fake-device-for-media-stream')
+            self.options.add_argument('--use-fake-ui-for-media-stream')
 
         super().__init__(chrome_options=self.options, *args, **kwargs)
 
