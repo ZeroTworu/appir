@@ -8,7 +8,8 @@ from wipe.browsers.abc import ABCWipeDriver
 
 class Firefox(webdriver.Firefox, ABCWipeDriver):
 
-    def __init__(self, headless=True, *args, **kwargs):
+    def __init__(self, headless=True, fake_media: bool = True, *args, **kwargs):
+        self.fake_media = fake_media
         self.options = Options()
         self.options.headless = headless
         self.profile = FirefoxProfile()
@@ -46,7 +47,7 @@ class Firefox(webdriver.Firefox, ABCWipeDriver):
         self.profile.set_preference('permissions.default.microphone', 0)
         self.profile.set_preference('permissions.default.camera', 0)
         self.profile.set_preference('browser.tabs.remote.autostart', True)
-        self.profile.set_preference('browser.tabs.remote.autostart.1', True)
-        self.profile.set_preference('browser.tabs.remote.autostart.2', True)
         self.profile.set_preference('browser.privatebrowsing.autostart', True)
         self.profile.set_preference('media.volume_scale', '0.0')
+        if self.fake_media:
+            self.options.set_preference('media.navigator.streams.fake', True)

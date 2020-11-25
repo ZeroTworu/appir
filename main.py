@@ -2,7 +2,7 @@ import argparse
 import logging
 from argparse import RawTextHelpFormatter
 
-from wipe.wipe import FillRoomStrategy, YouTubeStrategy
+from wipe.wipe import FillRoomStrategy, WipeParams, YouTubeStrategy
 
 logging.basicConfig(format='%(asctime)s: %(message)s', level=logging.INFO)
 
@@ -14,7 +14,7 @@ strategies = {
 
 def parse_args(args) -> dict:
     result = vars(args)  # noqa: WPS421
-    for param in ('strategy', 'url', 'knock', 'headless', 'browser'):
+    for param in ('strategy', 'url', 'knock', 'headless', 'browser', 'fake_media'):
         result.pop(param)
     return result
 
@@ -26,14 +26,15 @@ def handle_main(args):
         logging.error('Wrong strategy %s, write it by you self!', args.strategy)
         return
 
-    strategy = strategy_class(
+    wipe_params = WipeParams(
         room_url=args.url,
         browser=args.browser,
         headless=args.headless == '1',
         knock=args.knock == '1',
+        others_params=parse_args(args),
     )
 
-    strategy.set_params(params=parse_args(args))
+    strategy = strategy_class(wipe_params)
     strategy.run_strategy()
 
 
@@ -55,7 +56,8 @@ if __name__ == '__main__':
 
     parser.add_argument('--browser', help='browser for user, chrome or firefox default - firefox', default='firefox')
     parser.add_argument('--knock', help='knock to conference if locked', default='1')
-    parser.add_argument('--headless', help='if 0 run without GUI', default='1')
+    parser.add_argument('--headless', help='if 1 run without GUI', default='1')
+    parser.add_argument('--fake-media', help='if 1 browser use fake video&audio streams', default='1')
 
     args = parser.parse_args()
 

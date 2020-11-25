@@ -3,29 +3,31 @@ import logging
 import random
 import time
 
+import attr
 from wipe.appir import Appir
+
+
+@attr.s
+class WipeParams(object):
+    room_url: str = attr.ib()
+    browser: str = attr.ib(default='firefox')
+    headless: bool = attr.ib(default=True)
+    knock: bool = attr.ib(default=False)
+    fake_media: bool = attr.ib(default=False)
+    others_params: dict = attr.ib(default={})
 
 
 class WipeStrategy(object):
 
-    def __init__(
-        self,
-        room_url: str,
-        browser: str = 'firefox',
-        headless: bool = True,
-        knock: bool = False,
-    ):
-        self.appir = Appir(headless=headless, browser=browser, knock=knock)
-        self.params = {}
-        self.room_url = room_url
+    def __init__(self, params: WipeParams):
+        self.appir = Appir(headless=params.headless, browser=params.browser, knock=params.knock)
+        self.params = params.others_params
+        self.room_url = params.room_url
         self.is_waiting_ban = False
-
-    def set_params(self, params: dict = None):
-        self.params = params
 
     def wait_ban(self):
         while self.is_waiting_ban:
-            self.appir.check_ban(self._ban_callback)
+            self.appir.check_and_handle_ban(self._ban_callback)
 
     @abc.abstractmethod
     def _ban_callback(self):

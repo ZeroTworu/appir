@@ -12,16 +12,20 @@ from wipe.browsers.abc import ABCWipeDriver
 
 class Chrome(webdriver.Chrome, ABCWipeDriver):
 
-    def __init__(self, headless: bool = True, *args, **kwargs):
+    def __init__(self, headless: bool = True, fake_media: bool = True, *args, **kwargs):
         self.options = Options()
 
         if headless:
             self.options.add_argument('--headless')
 
         self.options.add_argument('--disable-gpu')
+        self.options.add_argument('--incognito')
+        self.options.add_argument('--mute-audio')
+        self.options.add_argument('--no-sandbox')
 
-        self.options.add_argument('use-fake-device-for-media-stream')
-        self.options.add_argument('use-fake-ui-for-media-stream')
+        if fake_media:
+            self.options.add_argument('use-fake-device-for-media-stream')
+            self.options.add_argument('use-fake-ui-for-media-stream')
 
         super().__init__(chrome_options=self.options, *args, **kwargs)
 
