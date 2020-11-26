@@ -15,11 +15,6 @@ class WipeStrategy(Appir):
         self.params = params.others_params
         self.room_url = params.room_url
         self.is_waiting_ban = False
-        if params.logger is not None:
-            self.logger = params.logger
-        else:
-            self.logger = logging.getLogger(__name__)
-
         super().__init__(params)
 
     def wait_ban(self):
@@ -49,8 +44,8 @@ class FillRoomStrategy(WipeStrategy):
                 self.users.pop(self.driver.window_handles[-1])
                 self.driver.close_tab()
                 self.is_waiting_ban = True
-
-                self.logger.info('Room %s fool, waiting for bans...', self.room_url)
+                time.sleep(0.5)
+                self.logger.warning('Room %s fool, waiting for bans...|%s', self.room_url, self.user_id)
                 self.wait_ban()
 
     def _ban_callback(self, *args, **kwargs):
@@ -77,7 +72,7 @@ class YouTubeStrategy(WipeStrategy):
             else:
                 self.start_youtube(youtube_link)
 
-            self.logger.info('Youtube %s started wait %d seconds...', youtube_link, wait_time)
+            self.logger.warning('Youtube %s started wait %d seconds...|%s', youtube_link, wait_time, self.user_id)
             time.sleep(wait_time)
 
             self.try_stop_youtube()

@@ -1,10 +1,11 @@
-import uuid
 import logging
 import threading
+import uuid
+import json
 from typing import List
 
 from flask import Flask, jsonify, render_template, request
-from web.web_handler import LOGS, WebHandler
+from web.web_handler import WebHandler, WipeLogRecordEncoder
 from wipe import STRATEGIES, __version__
 from wipe.wipe import WipeParams
 
@@ -13,6 +14,11 @@ app = Flask(__name__)
 logging.basicConfig(format='%(asctime)s: %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
 logger.addHandler(WebHandler())
+
+flask_log = logging.getLogger('werkzeug')
+flask_log.setLevel(logging.ERROR)
+
+threads = {}
 
 
 def validate(form_data: dict) -> List[str]:
@@ -33,6 +39,7 @@ def run_wipe(form_data):
 
     wipe_params = WipeParams(
         room_url=form_data['room_url'],
+        user_id=form_data['user_id'],
         browser=form_data['browser'],
         knock=form_data.get('knock', 'off') == 'on',
         fake_media=form_data.get('fake_media', 'off') == 'on',
@@ -43,6 +50,7 @@ def run_wipe(form_data):
 
     strategy = strategy_class(wipe_params)
     thread = threading.Thread(target=strategy.run_strategy)
+    threads[form_data['user_id']] = thread
     thread.start()
 
 
@@ -68,8 +76,6 @@ def wipe():
 
 @app.route('/status')
 def status():
-    if bool(LOGS):
-        return jsonify(
-            log=LOGS.pop(),
-        )
-    return jsonify({})
+    user_id = request.args.get('user_id')
+    logs = WebHandler.get_logs(user_id)
+    return json.dumps(logs, cls=WipeLogRecordEncoder)

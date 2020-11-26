@@ -30,12 +30,14 @@ function show_errors(errors) {
 
 function update_Status() {
     const user_id = $('#user_id').val()
+    const logs = $('#logs');
     setInterval(() => {
         $.getJSON(`/status?user_id=${user_id}`, (res) => {
-            console.log(res);
-            if (res['log']) {
-                const log = `<div class="${res['log']['level']}">${res['log']['msg']}</div>`;
-                $('#logs').append(log)
+            for (let log of res) {
+                if (logs.has(`#${log['timestamp']}`).length === 0) {
+                    const log_record = '<div id="' + log['timestamp'] + '" class="' + log['level'] + '">' + log["msg"] + '</div>';
+                    logs.append(log_record)
+                }
             }
         })
     }, 1000)

@@ -28,7 +28,7 @@ class Firefox(webdriver.Firefox, ABCWipeDriver):
         self.execute('SET_CONTEXT', {'context': 'chrome'})
         self.send_keys_to_url_bar(Keys.CONTROL, 't')
 
-        WebDriverWait(self, self.max_timeout).until(
+        WebDriverWait(self, self.max_timeout * 2).until(
             EC.number_of_windows_to_be(current_windows_count + 1),
         )
 
