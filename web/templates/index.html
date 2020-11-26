@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Whereby Wipe v{{ version }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" type="text/css"/>
+    <link rel="icon" type="image/ico" sizes="256x144" href="{{ url_for('static', filename='favicon.ico') }}">
+    <script language="JavaScript" src="{{ url_for('static', filename='jquery-3.5.1.min.js') }}"></script>
+    <script language="JavaScript" src="{{ url_for('static', filename='spa.js') }}"></script>
+</head>
+<body>
+<form action="/wipe" method="POST" enctype="multipart/form-data">
+    <select name="wipe_type">
+        {% for name, strategy in strategies.items() %}
+            <option value="{{ name }}">{{ strategy.description }}</option>
+        {% endfor %}
+    </select>
+    <div>
+        <label for="room_url">Ссылка на комнату</label>
+        <input type="url" name="room_url" id="room_url" required="required">
+    </div>
+    <div class="options">
+        <div>
+            <label for="youtub_url">Ссылка на ролик ютуб</label>
+            <input type="url" name="youtub_url" id="youtub_url">
+        </div>
+
+        <div>
+            <label for="fake_media">Использовать фекйковый медиапоток для вайпа</label>
+            <input type="checkbox" id="fake_media" name="fake_media">
+        </div>
+
+        <div>
+            <label for="knock">Стучаться в конфу, если она залочена</label>
+            <input type="checkbox" id="knock" name="knock">
+        </div>
+
+        <label for="browser">Какой браузер использовать</label>
+        <select name="browser" id="browser">
+            <option value="firefox">Firefox</option>
+            <option value="chrome">Chrome</option>
+        </select>
+    </div>
+    <input type="submit" value="Запуск" id="start_stop">
+</form>
+<div id="logs">
+{% for err in errors %}
+    <div class="err">{{ err }}</div>
+{% endfor %}
+{% for info in infos %}
+    <div class="info">{{ info }}</div>
+{% endfor %}
+</div>
+</body>
+</html>

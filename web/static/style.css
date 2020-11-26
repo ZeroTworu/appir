@@ -1,0 +1,13 @@
+#logs {
+    border: 2px solid black;
+    padding: 10px;
+    width: 50%;
+    height: 500px;
+}
+.err {
+    color: darkred;
+}
+
+.info {
+    color: darkgreen;
+}

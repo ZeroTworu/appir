@@ -2,14 +2,10 @@ import argparse
 import logging
 from argparse import RawTextHelpFormatter
 
-from wipe.wipe import FillRoomStrategy, WipeParams, YouTubeStrategy
+from wipe import STRATEGIES, __version__
+from wipe.wipe import WipeParams
 
 logging.basicConfig(format='%(asctime)s: %(message)s', level=logging.INFO)
-
-strategies = {
-    'fill': FillRoomStrategy,
-    'youtube': YouTubeStrategy,
-}
 
 
 def parse_args(args) -> dict:
@@ -20,7 +16,7 @@ def parse_args(args) -> dict:
 
 
 def handle_main(args):
-    strategy_class = strategies.get(args.strategy, None)
+    strategy_class = STRATEGIES.get(args.strategy, None)
 
     if strategy_class is None:
         logging.error('Wrong strategy %s, write it by you self!', args.strategy)
@@ -39,7 +35,7 @@ def handle_main(args):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Appir Wipe v0.0.1.', formatter_class=RawTextHelpFormatter)
+    parser = argparse.ArgumentParser(description=f'Whereby Wipe v{__version__}', formatter_class=RawTextHelpFormatter)
     parser.add_argument(
         'strategy',
         help="""

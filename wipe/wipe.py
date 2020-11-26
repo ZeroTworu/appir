@@ -19,11 +19,22 @@ class WipeParams(object):
 
 class WipeStrategy(object):
 
+    description = 'DESCRIPTION WHERE'
+
     def __init__(self, params: WipeParams):
         self.appir = Appir(headless=params.headless, browser=params.browser, knock=params.knock)
         self.params = params.others_params
         self.room_url = params.room_url
         self.is_waiting_ban = False
+        self.event_callback = None
+
+    def register_event_callback(self, callback):
+        self.event_callback = callback
+        self.appir.register_event_callback(callback)
+
+    def on_event(self, msg: str):
+        if self.event_callback is not None:
+            self.event_callback(msg)
 
     def wait_ban(self):
         while self.is_waiting_ban:
@@ -42,6 +53,8 @@ class FillRoomStrategy(WipeStrategy):
 
     max_timeout = 1.5
 
+    description = 'Попытка заполнить комнату до отказа'
+
     def run_strategy(self):
         while True:
             self.appir.enter_room(room_url=self.room_url)
@@ -52,6 +65,7 @@ class FillRoomStrategy(WipeStrategy):
                 self.is_waiting_ban = True
 
                 logging.info('Room %s fool, waiting for bans...', self.room_url)
+                self.on_event(f'Room {self.room_url} fool, waiting for bans...')
                 self.wait_ban()
 
     def _ban_callback(self, *args, **kwargs):
@@ -60,6 +74,7 @@ class FillRoomStrategy(WipeStrategy):
 
 class YouTubeStrategy(WipeStrategy):
     links = None
+    description = 'Постоянно заходит рандом и включает ютуб'
 
     def run_strategy(self):
         youtube_link = self.params.get('link')
@@ -78,6 +93,7 @@ class YouTubeStrategy(WipeStrategy):
                 self.appir.start_youtube(youtube_link)
 
             logging.info('Youtube %s started wait %d seconds...', youtube_link, wait_time)
+            self.on_event(f'Youtube {youtube_link} started wait {wait_time} seconds...')
             time.sleep(wait_time)
 
             self.appir.try_stop_youtube()
