@@ -1,10 +1,18 @@
 import abc
-import logging
 import random
 import time
 
 from wipe.appir import Appir
 from wipe.params import WipeParams
+
+
+class StopWipeException(Exception):
+
+    def __init__(self, user_id: str):
+        self.user_id = user_id
+
+    def __str__(self):
+        return f'Stop wipe for user session {self.user_id}'
 
 
 class WipeStrategy(Appir):
@@ -15,11 +23,16 @@ class WipeStrategy(Appir):
         self.params = params.others_params
         self.room_url = params.room_url
         self.is_waiting_ban = False
+        self.main_loop = True
         super().__init__(params)
 
     def wait_ban(self):
-        while self.is_waiting_ban:
+        while self.is_waiting_ban and self.main_loop:
             self.check_and_handle_ban(self._ban_callback)
+
+    def stop_wipe(self):
+        self.driver.quit()
+        self.main_loop = False
 
     @abc.abstractmethod
     def _ban_callback(self):
@@ -37,7 +50,7 @@ class FillRoomStrategy(WipeStrategy):
     description = 'Попытка заполнить комнату до отказа'
 
     def run_strategy(self):
-        while True:
+        while self.main_loop:
             self.enter_room(room_url=self.room_url)
             if self.is_fool:
 
@@ -62,7 +75,7 @@ class YouTubeStrategy(WipeStrategy):
         if youtube_file is not None:
             self._parse_youtube_file(youtube_file)
 
-        while True:
+        while self.main_loop:
             wait_time = random.randint(5, 20)
             self.enter_room(room_url=self.room_url)
 

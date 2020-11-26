@@ -1,5 +1,9 @@
 $(document).ready(() => {
-    $('#start_stop').bind('click', () => {
+    const start_btn = $('#start');
+    const stop_btn = $('#stop');
+    const user_id = $('#user_id').val()
+    let update_interval;
+    start_btn.bind('click', () => {
         let form_data = getFormData($('#send_form'));
         $.ajax({
             type: 'POST',
@@ -11,7 +15,9 @@ $(document).ready(() => {
                         show_errors(res['errors']);
                         break;
                     case 'started':
-                        update_Status();
+                        change_btns(true)
+                        $('#logs').append('<div class="INFO">Ожидаем ответа...</div>')
+                        update_interval = update_status();
                         break;
                 }
             },
@@ -20,7 +26,24 @@ $(document).ready(() => {
         });
         return false
     })
+
+    stop_btn.bind('click', () => {
+        $.getJSON(`/stop?user_id=${user_id}`, (res) => {
+            switch(res['status']){
+                case 'stopped':
+                    change_btns(false)
+                    clearInterval(update_interval)
+                    break;
+            }
+        })
+        return false
+    });
 })
+
+function change_btns(disable) {
+    $('#start').prop('disabled', disable);
+    $('#stop').prop('disabled', !disable);
+}
 
 function show_errors(errors) {
     for (let err of errors) {
@@ -28,10 +51,10 @@ function show_errors(errors) {
     }
 }
 
-function update_Status() {
+function update_status() {
     const user_id = $('#user_id').val()
     const logs = $('#logs');
-    setInterval(() => {
+    const handler = () => {
         $.getJSON(`/status?user_id=${user_id}`, (res) => {
             for (let log of res) {
                 if (logs.has(`#${log['timestamp']}`).length === 0) {
@@ -40,7 +63,9 @@ function update_Status() {
                 }
             }
         })
-    }, 1000)
+    }
+    return setInterval(handler, 1000)
+
 }
 
 function getFormData(form){

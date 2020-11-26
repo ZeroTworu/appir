@@ -21,7 +21,7 @@ drivers = {
 
 class Appir(object):  # noqa: WPS214
 
-    max_timeout = 5
+    max_timeout = 10
 
     youtube_timeout = 60
 
@@ -209,7 +209,7 @@ class Appir(object):  # noqa: WPS214
             self.logger.warning('Cannot start YouTube - timeout wait|%s', self.user_id)
 
     def _check_ban(self, window, callback: Callable = None):
-        self.driver.switch_to.window(window)
+        self.driver.switch_window(window)
         if self.has_ban:
             user = self.users.pop(window)
             self.driver.close_tab()
@@ -234,12 +234,12 @@ class Appir(object):  # noqa: WPS214
 
     def _append_user(self, username):
         try:
-            WebDriverWait(self.driver, self.max_timeout * 2).until(
+            WebDriverWait(self.driver, self.max_timeout * 6).until(
                 EC.presence_of_element_located((By.XPATH, '//figcaption[contains(text(), "Chat")]')),
             )
         except TimeoutException:
             if not self.is_fool:
-                self.logger.warning('Possible room lag, close tab...|%s',self.user_id)
+                self.logger.warning('Possible room lag, close tab...|%s', self.user_id)
                 self.driver.close_tab()
                 return
 

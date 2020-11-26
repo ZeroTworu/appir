@@ -1,5 +1,6 @@
 import argparse
 import logging
+import uuid
 from argparse import RawTextHelpFormatter
 
 from wipe import STRATEGIES, __version__
@@ -29,6 +30,7 @@ def handle_main(args):
         knock=args.knock == '1',
         fake_media=args.fake_media == '1',
         others_params=parse_args(args),
+        user_id=f'{uuid.uuid4()}',
     )
 
     strategy = strategy_class(wipe_params)

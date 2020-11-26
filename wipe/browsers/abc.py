@@ -21,3 +21,9 @@ class ABCWipeDriver(object):
             self.switch_to.window(self.window_handles[back])
         else:
             self.switch_to.window(self.window_handles[0])
+
+    def switch_window(self, window: str) -> bool:
+        if window in self.window_handles:
+            self.switch_to.window(window)
+            return True
+        return False
