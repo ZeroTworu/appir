@@ -9,7 +9,8 @@
     <script language="JavaScript" src="{{ url_for('static', filename='spa.js') }}"></script>
 </head>
 <body>
-<form action="/wipe" method="POST" enctype="multipart/form-data">
+<form id="send_form" action="/wipe" method="POST" enctype="multipart/form-data">
+    <input type="hidden" id="user_id" name="user_id" value="{{ user_id }}">
     <select name="wipe_type">
         {% for name, strategy in strategies.items() %}
             <option value="{{ name }}">{{ strategy.description }}</option>
@@ -21,12 +22,12 @@
     </div>
     <div class="options">
         <div>
-            <label for="youtub_url">Ссылка на ролик ютуб</label>
-            <input type="url" name="youtub_url" id="youtub_url">
+            <label for="youtube_url">Ссылка на ролик ютуб</label>
+            <input type="url" name="youtube_url" id="youtube_url">
         </div>
 
         <div>
-            <label for="fake_media">Использовать фекйковый медиапоток для вайпа</label>
+            <label for="fake_media">Использовать фейковый медиапоток для вайпа</label>
             <input type="checkbox" id="fake_media" name="fake_media">
         </div>
 
@@ -41,15 +42,9 @@
             <option value="chrome">Chrome</option>
         </select>
     </div>
-    <input type="submit" value="Запуск" id="start_stop">
+    <button id="start_stop">Запустить</button>
 </form>
 <div id="logs">
-{% for err in errors %}
-    <div class="err">{{ err }}</div>
-{% endfor %}
-{% for info in infos %}
-    <div class="info">{{ info }}</div>
-{% endfor %}
 </div>
 </body>
 </html>

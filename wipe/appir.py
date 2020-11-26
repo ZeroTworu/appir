@@ -11,6 +11,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC  # noqa: N812
 from selenium.webdriver.support.ui import WebDriverWait
 from wipe.browsers import Chrome, Firefox
+from wipe.params import WipeParams
 
 drivers = {
     'firefox': Firefox,
@@ -28,17 +29,20 @@ class Appir(object):  # noqa: WPS214
 
     users = {}
 
-    def __init__(self, headless: bool = True, browser: str = 'firefox', knock: bool = True, fake_media: bool = True):
-        driver_class = drivers.get(browser.lower(), None)
+    def __init__(self, params: WipeParams):
+        driver_class = drivers.get(params.browser.lower(), None)
         if driver_class is None:
-            logging.error('Unknown browser %s', browser)
+            logging.error('Unknown browser %s', params.browser)
             return
-        self.browser = browser
+        self.browser = params.browser
         self.opened_new_tab = False
-        self.driver = driver_class(headless=headless, fake_media=fake_media)
-        self.knock = knock
-        self.room_url: str = ''
-        self.event_callback: Callable = None
+        self.driver = driver_class(headless=params.headless, fake_media=params.fake_media)
+        self.knock = params.knock
+        self._room_url: str = ''
+        if params.logger is not None:
+            self.logger: logging = params.logger
+        else:
+            self.logger = logging.getLogger(__name__)
 
         atexit.register(self.driver.quit)
 
@@ -76,16 +80,9 @@ class Appir(object):  # noqa: WPS214
     def dont_login(self):
         return self.is_chrome and self.is_whereby_open and len(self.driver.window_handles) > 1
 
-    def register_event_callback(self, callback: Callable):
-        self.event_callback = callback
-
-    def on_event(self, msg: str):
-        if self.event_callback is not None:
-            self.event_callback(msg)
-
     def enter_room(self, room_url: str) -> None:
         username = f'{uuid.uuid4()}'
-        self.room_url = room_url
+        self._room_url = room_url
 
         if self.is_whereby_open:
             self.opened_new_tab = True  # Для хрома помечаем что первый вход выполнен
@@ -135,16 +132,14 @@ class Appir(object):  # noqa: WPS214
 
         wait_time = self.max_timeout * random.randint(1, 10)
 
-        logging.info('Knock in %s, sleep %d...', self.room_url, wait_time)
-        self.on_event(f'Knock in {self.room_url}, sleep {wait_time}...')
+        self.logger.info('Knock in %s, sleep %d...', self._room_url, wait_time)
 
         try:
             WebDriverWait(self.driver, wait_time, poll_frequency=0.1).until(
                 EC.presence_of_element_located((By.XPATH, '//figcaption[contains(text(), "Chat")]')),
             )
         except TimeoutException:
-            logging.warning('Knock failed, waiting %d', wait_time)
-            self.on_event(f'Knock failed, waiting {wait_time}')
+            self.logger.warning('Knock failed, waiting %d', wait_time)
             return self.check_locked(username)
         # Здесь мы могли быть впущены и пидорнуты
         return True
@@ -156,16 +151,14 @@ class Appir(object):  # noqa: WPS214
         exit_btn.click()
         self.driver.close_tab()
         self.users.pop(current_window)
-        logging.info('User %s left room', user)
-        self.on_event(f'User {user} left room')
+        self.logger.info('User %s left room', user)
 
     def try_stop_youtube(self) -> None:
         logging.info('Try stop youtube')
         try:
             self.driver.find_element_by_xpath('//div[contains(text(), "Stop sharing")]').click()
         except NoSuchElementException:
-            logging.warning('No stop youtube btn')
-            self.on_event('No stop youtube btn')
+            self.logger.warning('No stop youtube btn')
 
     def check_and_handle_ban(self, callback: Callable = None):
         for window in self.users.keys():
@@ -204,16 +197,14 @@ class Appir(object):  # noqa: WPS214
                 EC.presence_of_element_located((By.XPATH, '//div[contains(text(), "Stop sharing")]')),
             )
         except TimeoutException:
-            logging.warning('Cannot start YouTube - timeout wait')
-            self.on_event('Cannot start YouTube - timeout wait')
+            self.logger.warning('Cannot start YouTube - timeout wait')
 
     def _check_ban(self, window, callback: Callable = None):
         self.driver.switch_to.window(window)
         if self.has_ban:
             user = self.users.pop(window)
             self.driver.close_tab()
-            logging.warning('User %s kicked', user)
-            self.on_event(f'User {user} kicked')
+            self.logger.warning('User %s kicked', user)
             if callback is not None:
                 return True, callback()
             return True, None
@@ -225,8 +216,7 @@ class Appir(object):  # noqa: WPS214
                 EC.presence_of_element_located((By.TAG_NAME, 'figure')),
             )
         except TimeoutException:
-            logging.warning('Cannot find settings btn')
-            self.on_event('Cannot find settings btn')
+            self.logger.warning('Cannot find settings btn')
             return
 
         settings = self.driver.find_elements_by_tag_name('figure')[:2]
@@ -245,14 +235,13 @@ class Appir(object):  # noqa: WPS214
                 return
 
         self.users[self.driver.current_window_handle] = username
-        logging.info('User %s login', username)
-        self.on_event(f'User {username} login')
+        self.logger.info('User %s login', username)
 
     def _ff_enter_room(self, username):
         self.enter_login(username)
 
         if self.knock and self.check_locked(username) is True:
-            self._check_ban(self.driver.current_window_handle, partial(self.enter_room, self.room_url))
+            self._check_ban(self.driver.current_window_handle, partial(self.enter_room, self._room_url))
         else:
             self.join_room(username)
 
@@ -261,7 +250,7 @@ class Appir(object):  # noqa: WPS214
             return self._ff_enter_room(username)
 
         if self.knock and self.check_locked(username) is True:
-            self._check_ban(self.driver.current_window_handle, partial(self.enter_room, self.room_url))
+            self._check_ban(self.driver.current_window_handle, partial(self.enter_room, self._room_url))
 
     def _cancel_knock(self):
         try:

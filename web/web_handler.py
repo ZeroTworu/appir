@@ -1,9 +1,13 @@
-from logging import Handler, LogRecord
+from logging import Handler, LogRecord, StreamHandler
 
-from web.main import LOGS
+LOGS = []  # noqa: WPS407
 
 
-class WebHandler(Handler):
+class WebHandler(StreamHandler):
 
     def emit(self, record: LogRecord) -> None:
-        LOGS.append(record)
+        msg = self.format(record)
+        LOGS.append({
+            'msg': msg,
+            'level': record.levelname
+        })

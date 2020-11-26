@@ -27,6 +27,7 @@ def handle_main(args):
         browser=args.browser,
         headless=args.headless == '1',
         knock=args.knock == '1',
+        fake_media=args.fake_media == '1',
         others_params=parse_args(args),
     )
 

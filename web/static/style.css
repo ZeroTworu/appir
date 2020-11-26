@@ -4,10 +4,14 @@
     width: 50%;
     height: 500px;
 }
-.err {
+.ERROR {
     color: darkred;
 }
 
-.info {
+.INFO {
     color: darkgreen;
+}
+
+.WARNING {
+    color: darkgoldenrod;
 }
