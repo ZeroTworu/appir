@@ -4,7 +4,7 @@ import random
 import time
 import uuid
 from functools import partial
-from typing import Callable
+from typing import Callable, Dict
 
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from selenium.webdriver.common.by import By
@@ -27,7 +27,7 @@ class Appir(object):  # noqa: WPS214
 
     min_timeout = 1.5
 
-    users = {}
+    users: Dict[str, str] = {}
 
     def __init__(self, params: WipeParams):
         driver_class = drivers.get(params.browser.lower(), None)
@@ -41,13 +41,15 @@ class Appir(object):  # noqa: WPS214
 
         self.driver = driver_class(headless=params.headless, fake_media=params.fake_media)
         self.knock = params.knock
-        self.browser = params.browser
-        self.sid = params.sid
+        self._browser = params.browser
+        self._sid = params.sid
 
         if params.logger is not None:
-            self.logger = params.logger
+            self._logger = params.logger
         else:
-            self.logger = logging.getLogger(__name__)
+            self._logger = logging.getLogger(__name__)
+
+        self._logger.setLevel(logging.DEBUG)
 
         atexit.register(self.driver.quit)
 
@@ -58,20 +60,18 @@ class Appir(object):  # noqa: WPS214
     @property
     def is_fool(self):
         try:
-            WebDriverWait(self.driver, self.min_timeout).until(
-                EC.presence_of_element_located((By.XPATH, '//h1[contains(text(), "Sorry, this room is full")]')),
-            )
-        except TimeoutException:
+            self.driver.find_element_by_xpath('//h1[contains(text(), "Sorry, this room is full")]')
+        except NoSuchElementException:
             return False
         return True
 
     @property
     def is_firefox(self):
-        return self.browser == 'firefox'
+        return self._browser == 'firefox'
 
     @property
     def is_chrome(self):
-        return self.browser == 'chrome'
+        return self._browser == 'chrome'
 
     @property
     def has_ban(self):
@@ -93,7 +93,7 @@ class Appir(object):  # noqa: WPS214
             self.opened_new_tab = True  # Для хрома помечаем что первый вход выполнен
             self.driver.open_new_tab()
 
-        self.logger.info('Waiting replay from whereby for url %s', self._room_url)
+        self._logger.debug('Waiting replay from whereby for url %s', self._room_url)
         self.driver.get(room_url)
 
         # FF каждую новую вкладку, открывает незлогиненной в аппир
@@ -118,7 +118,7 @@ class Appir(object):  # noqa: WPS214
 
         continue_btn.click()
 
-    def join_room(self, username: str = None):
+    def join_room(self):
         join_btn = WebDriverWait(self.driver, self.max_timeout).until(
             EC.presence_of_element_located((By.XPATH, '//div[contains(text(), "Join meeting")]')),
         )
@@ -138,17 +138,17 @@ class Appir(object):  # noqa: WPS214
 
         wait_time = self.max_timeout * random.randint(1, 10)
 
-        self.logger.info('Knock in %s, sleep %d...', self._room_url, wait_time)
+        self._logger.info('Knock in %s, sleep %d...', self._room_url, wait_time)
 
         try:
             WebDriverWait(self.driver, wait_time, poll_frequency=0.1).until(
                 EC.presence_of_element_located((By.XPATH, '//figcaption[contains(text(), "Chat")]')),
             )
         except TimeoutException:
-            self.logger.warning('Knock failed.')
+            self._logger.warning('Knock failed.')
             return self.check_locked(username)
         # Здесь мы могли быть впущены и пидорнуты
-        self.logger.info('User %s successfully knocked to room %s.', username, self._room_url)
+        self._logger.info('User %s successfully knocked to room %s.', username, self._room_url)
         return True
 
     def exit_room(self) -> None:
@@ -158,20 +158,20 @@ class Appir(object):  # noqa: WPS214
         try:
             exit_btn = self.driver.find_element_by_class_name('jstest-leave-room-button')
         except NoSuchElementException:
-            self.logger.warning('Cannot found exit btn %s', user)
+            self._logger.warning('Cannot found exit btn %s', user)
             return
 
         exit_btn.click()
         self.driver.close_tab()
         self.users.pop(current_window)
-        self.logger.info('User %s left room', user)
+        self._logger.info('User %s left room', user)
 
     def try_stop_youtube(self) -> None:
-        self.logger.info('Try stop youtube')
+        self._logger.info('Try stop youtube')
         try:
             self.driver.find_element_by_xpath('//div[contains(text(), "Stop sharing")]').click()
         except NoSuchElementException:
-            self.logger.warning('No stop youtube btn')
+            self._logger.warning('No stop youtube btn')
 
     def check_and_handle_ban(self, callback: Callable = None):
         for window in self.users.copy().keys():
@@ -208,16 +208,21 @@ class Appir(object):  # noqa: WPS214
                 EC.presence_of_element_located((By.XPATH, '//div[contains(text(), "Stop sharing")]')),
             )
         except TimeoutException:
-            self.logger.warning('Cannot start YouTube - timeout wait')
+            self._logger.warning('Cannot start YouTube - timeout wait')
 
     def _check_ban(self, window, callback: Callable = None):
         self.driver.switch_window(window)
         if self.has_ban:
             user = self.users.pop(window)
             self.driver.close_tab()
-            self.logger.warning('User %s kicked', user)
+            self._logger.warning('User %s kicked', user)
             if callback is not None:
                 callback()
+
+    def _check_fool(self, window):
+        self.driver.switch_window(window)
+        self.driver.close_tab()
+        self._logger.warning('Closed tab %s because is fool', window)
 
     def _fix_cam_mic(self) -> None:
         try:
@@ -225,7 +230,7 @@ class Appir(object):  # noqa: WPS214
                 EC.presence_of_element_located((By.TAG_NAME, 'figure')),
             )
         except TimeoutException:
-            self.logger.warning('Cannot find settings btn')
+            self._logger.warning('Cannot find settings btn')
             return
 
         settings = self.driver.find_elements_by_tag_name('figure')[:2]
@@ -233,18 +238,11 @@ class Appir(object):  # noqa: WPS214
             btn.click()
 
     def _append_user(self, username):
-        try:
-            WebDriverWait(self.driver, self.max_timeout * 6).until(
-                EC.presence_of_element_located((By.XPATH, '//figcaption[contains(text(), "Chat")]')),
-            )
-        except TimeoutException:
-            if not self.is_fool:
-                self.logger.warning('Possible room lag, close tab...')
-                self.driver.close_tab()
-                return
-
-        self.users[self.driver.current_window_handle] = username
-        self.logger.info('User %s login', username)
+        if not self.is_fool:
+            self.users[self.driver.current_window_handle] = username
+            self._logger.info('User %s login', username)
+            return
+        self._logger.warning('Room %s is fool, user %s does not need to be added', self._room_url, username)
 
     def _ff_enter_room(self, username):
         self.enter_login(username)
@@ -252,7 +250,7 @@ class Appir(object):  # noqa: WPS214
         if self.knock and self.check_locked(username) is True:
             self._check_ban(self.driver.current_window_handle, partial(self.enter_room, self._room_url))
         else:
-            self.join_room(username)
+            self.join_room()
 
     def _chrome_enter_room(self, username):
         if not self.opened_new_tab:

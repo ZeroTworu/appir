@@ -16,3 +16,7 @@
 .WARNING {
     color: darkgoldenrod;
 }
+
+.DEBUG {
+    color: gray;
+}

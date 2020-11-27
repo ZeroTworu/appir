@@ -3,12 +3,11 @@ import logging
 import uuid
 from typing import Dict, List
 
-import attr
 from flask import Flask, jsonify, render_template, request
 from web.web_handler import WebHandler, WipeLogRecordEncoder
 from wipe import STRATEGIES, __version__
-from wipe.wipe import WipeParams, WipeStrategy
 from wipe.threads import WipeThread
+from wipe.wipe import WipeParams
 
 app = Flask(__name__)
 

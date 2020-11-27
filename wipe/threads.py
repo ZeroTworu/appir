@@ -1,7 +1,7 @@
 import logging
 from threading import Thread
-from selenium.common.exceptions import InvalidSessionIdException
 
+from selenium.common.exceptions import InvalidSessionIdException
 from wipe.wipe import WipeStrategy
 
 

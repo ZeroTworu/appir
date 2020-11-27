@@ -1,9 +1,11 @@
 import abc
 import random
 import time
-from threading import Thread
+from threading import Lock, Thread
+
 from wipe.appir import Appir
 from wipe.params import WipeParams
+from wipe.patches import patch_http_connection_pool
 
 
 class WipeStrategy(Appir):
@@ -11,6 +13,8 @@ class WipeStrategy(Appir):
     description = 'DESCRIPTION WHERE'
 
     def __init__(self, params: WipeParams):
+        patch_http_connection_pool(maxsize=25)
+
         self.params = params.others_params
         self.room_url = params.room_url
         self.is_waiting_ban = False
@@ -21,8 +25,9 @@ class WipeStrategy(Appir):
             self.check_and_handle_ban(self._ban_callback)
 
     def stop_wipe(self):
-        self.driver.quit()
         self.is_working = False
+        time.sleep(self.max_timeout)
+        self.driver.quit()
 
     @abc.abstractmethod
     def _ban_callback(self):
@@ -39,19 +44,37 @@ class FillRoomStrategy(WipeStrategy):
 
     description = 'Попытка заполнить комнату до отказа'
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, *kwargs)
+        self.mutex = Lock()
+        self.need_check = True
+        self.check_thread = Thread(target=self.check_thread, name='Control ban thread')
+        self.check_thread.start()
+
     def run_strategy(self):
         while self.is_working:
+            self.mutex.acquire()
             self.enter_room(room_url=self.room_url)
-            if self.is_fool:
-                self.users.pop(self.driver.window_handles[-1])
-                self.driver.close_tab()
+            self.need_check = not self.is_fool
+            self.mutex.release()
+            time.sleep(1)
+            if not self.need_check:
                 self.is_waiting_ban = True
-                time.sleep(0.5)
-                self.logger.warning('Room %s fool, waiting for bans...', self.room_url)
+                time.sleep(self.min_timeout)
+                self._logger.warning('Room %s fool, waiting for bans...', self.room_url)
                 self.wait_ban()
+
+    def check_thread(self):
+        need_work = not self.is_waiting_ban and self.need_check and self.is_working
+        while need_work:
+            self.mutex.acquire()
+            self.check_and_handle_ban()
+            self.mutex.release()
+            time.sleep(0.5)
 
     def _ban_callback(self, *args, **kwargs):
         self.is_waiting_ban = False
+        self.need_check = True
 
 
 class YouTubeStrategy(WipeStrategy):
@@ -74,7 +97,7 @@ class YouTubeStrategy(WipeStrategy):
             else:
                 self.start_youtube(youtube_link)
 
-            self.logger.warning('Youtube %s started wait %d seconds...', youtube_link, wait_time)
+            self._logger.warning('Youtube %s started wait %d seconds...', youtube_link, wait_time)
             time.sleep(wait_time)
 
             self.try_stop_youtube()

@@ -1,4 +1,5 @@
 import abc
+
 from selenium.webdriver.remote.webdriver import WebDriver
 
 
@@ -28,3 +29,7 @@ class ABCWipeDriver(WebDriver):
             self.switch_to.window(window)
             return True
         return False
+
+    def switch_to_last_window(self):
+        window = self.window_handles[-1]
+        return self.switch_window(window)
