@@ -53,7 +53,6 @@ class FillRoomStrategy(WipeStrategy):
         while self.main_loop:
             self.enter_room(room_url=self.room_url)
             if self.is_fool:
-
                 self.users.pop(self.driver.window_handles[-1])
                 self.driver.close_tab()
                 self.is_waiting_ban = True

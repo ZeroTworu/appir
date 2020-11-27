@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "appir-wipe"
-version = "0.1.0"
+version = "0.2.3"
 description = "fuck shizics"
 authors = ["hanyuu furude"]
 license = "MIT"
@@ -9,6 +9,7 @@ license = "MIT"
 python = "^3.8"
 selenium = "^3.141.0"
 Flask = "^1.1.2"
+attrs = "^20.3.0"
 
 [tool.poetry.dev-dependencies]
 wemake-python-styleguide = "^0.14.1"
