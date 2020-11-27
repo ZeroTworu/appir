@@ -1,7 +1,7 @@
 $(document).ready(() => {
     const start_btn = $('#start');
     const stop_btn = $('#stop');
-    const user_id = $('#user_id').val()
+    const sid = $('#sid').val()
     let update_interval;
     start_btn.bind('click', () => {
         let form_data = getFormData($('#send_form'));
@@ -28,10 +28,11 @@ $(document).ready(() => {
     })
 
     stop_btn.bind('click', () => {
-        $.getJSON(`/stop?user_id=${user_id}`, (res) => {
+        $.getJSON(`/stop?sid=${sid}`, (res) => {
             switch(res['status']){
                 case 'stopped':
                     change_btns(false)
+                     $('#logs').append('<div class="INFO">Остановлено.</div>')
                     clearInterval(update_interval)
                     break;
             }
@@ -52,13 +53,13 @@ function show_errors(errors) {
 }
 
 function update_status() {
-    const user_id = $('#user_id').val()
+    const sid = $('#sid').val()
     const logs = $('#logs');
     const handler = () => {
-        $.getJSON(`/status?user_id=${user_id}`, (res) => {
+        $.getJSON(`/status?sid=${sid}`, (res) => {
             for (let log of res) {
                 if (logs.has(`#${log['timestamp']}`).length === 0) {
-                    const log_record = '<div id="' + log['timestamp'] + '" class="' + log['level'] + '">' + log["msg"] + '</div>';
+                    const log_record = `<div id="${log['timestamp']}" class="${log['level']}">${log["msg"]}</div>`;
                     logs.append(log_record)
                 }
             }

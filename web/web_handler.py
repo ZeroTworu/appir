@@ -28,18 +28,17 @@ class WebHandler(StreamHandler):
 
     def emit(self, record: LogRecord) -> None:
         msg = self.format(record)
-        if '|' in msg:
-            msg, user_id = msg.split('|')
-            if self.logs.get(user_id, None) is None:
-                self.logs[user_id] = []
 
-            w_record = WipeLogRecord(
-                msg=msg,
-                level=record.levelname,
-                timestamp=int(record.created * 1000),
-            )
+        if self.logs.get(record.threadName, None) is None:
+            self.logs[record.threadName] = []
 
-            self.logs[user_id].append(w_record)
+        w_record = WipeLogRecord(
+            msg=msg,
+            level=record.levelname,
+            timestamp=int(record.created * 1000),
+        )
+
+        self.logs[record.threadName].append(w_record)
         super().emit(record)
 
     @classmethod

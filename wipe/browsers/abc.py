@@ -1,7 +1,8 @@
 import abc
+from selenium.webdriver.remote.webdriver import WebDriver
 
 
-class ABCWipeDriver(object):
+class ABCWipeDriver(WebDriver):
     max_timeout = 5
 
     @abc.abstractmethod

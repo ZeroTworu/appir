@@ -1,18 +1,9 @@
 import abc
 import random
 import time
-
+from threading import Thread
 from wipe.appir import Appir
 from wipe.params import WipeParams
-
-
-class StopWipeException(Exception):
-
-    def __init__(self, user_id: str):
-        self.user_id = user_id
-
-    def __str__(self):
-        return f'Stop wipe for user session {self.user_id}'
 
 
 class WipeStrategy(Appir):
@@ -23,16 +14,15 @@ class WipeStrategy(Appir):
         self.params = params.others_params
         self.room_url = params.room_url
         self.is_waiting_ban = False
-        self.main_loop = True
         super().__init__(params)
 
     def wait_ban(self):
-        while self.is_waiting_ban and self.main_loop:
+        while self.is_waiting_ban and self.is_working:
             self.check_and_handle_ban(self._ban_callback)
 
     def stop_wipe(self):
         self.driver.quit()
-        self.main_loop = False
+        self.is_working = False
 
     @abc.abstractmethod
     def _ban_callback(self):
@@ -50,14 +40,14 @@ class FillRoomStrategy(WipeStrategy):
     description = 'Попытка заполнить комнату до отказа'
 
     def run_strategy(self):
-        while self.main_loop:
+        while self.is_working:
             self.enter_room(room_url=self.room_url)
             if self.is_fool:
                 self.users.pop(self.driver.window_handles[-1])
                 self.driver.close_tab()
                 self.is_waiting_ban = True
                 time.sleep(0.5)
-                self.logger.warning('Room %s fool, waiting for bans...|%s', self.room_url, self.user_id)
+                self.logger.warning('Room %s fool, waiting for bans...', self.room_url)
                 self.wait_ban()
 
     def _ban_callback(self, *args, **kwargs):
@@ -74,7 +64,7 @@ class YouTubeStrategy(WipeStrategy):
         if youtube_file is not None:
             self._parse_youtube_file(youtube_file)
 
-        while self.main_loop:
+        while self.is_working:
             wait_time = random.randint(5, 20)
             self.enter_room(room_url=self.room_url)
 
@@ -84,7 +74,7 @@ class YouTubeStrategy(WipeStrategy):
             else:
                 self.start_youtube(youtube_link)
 
-            self.logger.warning('Youtube %s started wait %d seconds...|%s', youtube_link, wait_time, self.user_id)
+            self.logger.warning('Youtube %s started wait %d seconds...', youtube_link, wait_time)
             time.sleep(wait_time)
 
             self.try_stop_youtube()

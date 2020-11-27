@@ -6,7 +6,7 @@ import attr
 @attr.s
 class WipeParams(object):
     room_url: str = attr.ib()
-    user_id: str = attr.ib()
+    sid: str = attr.ib()
 
     browser: str = attr.ib(default='firefox')
     headless: bool = attr.ib(default=True)

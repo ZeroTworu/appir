@@ -1,6 +1,5 @@
 import json
 import logging
-import threading
 import uuid
 from typing import Dict, List
 
@@ -9,6 +8,7 @@ from flask import Flask, jsonify, render_template, request
 from web.web_handler import WebHandler, WipeLogRecordEncoder
 from wipe import STRATEGIES, __version__
 from wipe.wipe import WipeParams, WipeStrategy
+from wipe.threads import WipeThread
 
 app = Flask(__name__)
 
@@ -20,13 +20,7 @@ flask_log = logging.getLogger('werkzeug')
 flask_log.setLevel(logging.ERROR)
 
 
-@attr.s
-class WipeContainer(object):
-    strategy: WipeStrategy = attr.ib()
-    thread: threading.Thread = attr.ib()
-
-
-threads: Dict[str, WipeContainer] = {}
+threads: Dict[str, WipeThread] = {}
 
 
 def validate(form_data: dict) -> List[str]:
@@ -47,7 +41,7 @@ def run_wipe(form_data):
 
     wipe_params = WipeParams(
         room_url=form_data['room_url'],
-        user_id=form_data['user_id'],
+        sid=form_data['sid'],
         browser=form_data['browser'],
         knock=form_data.get('knock', 'off') == 'on',
         fake_media=form_data.get('fake_media', 'off') == 'on',
@@ -57,8 +51,8 @@ def run_wipe(form_data):
     )
 
     strategy = strategy_class(wipe_params)
-    thread = threading.Thread(target=strategy.run_strategy)
-    threads[form_data['user_id']] = WipeContainer(strategy=strategy, thread=thread)
+    thread = WipeThread(target=strategy.run_strategy, strategy=strategy, name=form_data['sid'])
+    threads[form_data['sid']] = thread
     thread.start()
 
 
@@ -67,7 +61,7 @@ def hello_world():
     params = {
         'version': __version__,
         'strategies': STRATEGIES,
-        'user_id': f'{uuid.uuid4()}',
+        'sid': f'{uuid.uuid4()}',
     }
     return render_template('index.html', **params)
 
@@ -84,16 +78,16 @@ def wipe():
 
 @app.route('/status')
 def status():
-    user_id = request.args.get('user_id')
+    user_id = request.args.get('sid')
     logs = WebHandler.get_logs(user_id)
     return json.dumps(logs, cls=WipeLogRecordEncoder)
 
 
 @app.route('/stop')
 def stop():
-    user_id = request.args.get('user_id')
-    container = threads[user_id]
-    container.strategy.stop_wipe()
-    WebHandler.clear_logs(user_id)
-    logger.info('Wipe stopped for %s|%s', user_id, user_id)
+    sid = request.args.get('sid')
+    thread = threads[sid]
+    thread.stop()
+    logger.info('Wipe stopped for %s', sid)
+    WebHandler.clear_logs(sid)
     return jsonify({'status': 'stopped'})

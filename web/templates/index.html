@@ -10,7 +10,7 @@
 </head>
 <body>
 <form id="send_form" action="/wipe" method="POST" enctype="multipart/form-data">
-    <input type="hidden" id="user_id" name="user_id" value="{{ user_id }}">
+    <input type="hidden" id="sid" name="sid" value="{{ sid }}">
     <select name="wipe_type">
         {% for name, strategy in strategies.items() %}
             <option value="{{ name }}">{{ strategy.description }}</option>

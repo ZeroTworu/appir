@@ -2,7 +2,7 @@
 name = "appir-wipe"
 version = "0.2.3"
 description = "fuck shizics"
-authors = ["hanyuu furude"]
+authors = ["Hanyuu Furude (Ciaphas Cain)"]
 license = "MIT"
 
 [tool.poetry.dependencies]
