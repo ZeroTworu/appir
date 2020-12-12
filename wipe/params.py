@@ -14,3 +14,5 @@ class WipeParams(object):
     fake_media: bool = attr.ib(default=False)
     others_params: dict = attr.ib(default={})
     logger: logging = attr.ib(default=None)
+    generator: str = attr.ib(default='zalgo')
+    generator_length: int = attr.ib(default=10)

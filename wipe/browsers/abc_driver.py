@@ -1,4 +1,5 @@
 import abc
+import uuid
 
 from selenium.webdriver.remote.webdriver import WebDriver
 
@@ -33,3 +34,10 @@ class ABCWipeDriver(WebDriver):
     def switch_to_last_window(self):
         window = self.window_handles[-1]
         return self.switch_window(window)
+
+    def debug(self):
+        name = f'{uuid.uuid4()}'
+        self.save_screenshot(f'{name}.png')
+        with open(f'{name}.html', 'w') as file:
+            file.write(self.page_source)
+        print(f'Saved {name}')  # noqa: WPS421

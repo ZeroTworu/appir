@@ -2,7 +2,6 @@ import atexit
 import logging
 import random
 import time
-import uuid
 from functools import partial
 from typing import Callable, Dict
 
@@ -11,6 +10,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC  # noqa: N812
 from selenium.webdriver.support.ui import WebDriverWait
 from wipe.browsers import Chrome, Firefox
+from wipe.mixins import NameMixin
 from wipe.params import WipeParams
 
 drivers = {
@@ -19,17 +19,22 @@ drivers = {
 }
 
 
-class Appir(object):  # noqa: WPS214
+class Appir(NameMixin):  # noqa: WPS214
 
     max_timeout = 10
 
-    youtube_timeout = 60
+    one_minute_timeout = 60
 
-    min_timeout = 1.5
+    min_timeout = 0.5
+
+    min_poll_timeout = 0.1
 
     users: Dict[str, str] = {}
 
     def __init__(self, params: WipeParams):
+        super().__init__(params.generator, params.generator_length)
+        self.generator = self.get_generator()
+
         driver_class = drivers.get(params.browser.lower(), None)
         if driver_class is None:
             logging.error('Unknown browser %s', params.browser)
@@ -85,8 +90,8 @@ class Appir(object):  # noqa: WPS214
     def dont_login(self):
         return self.is_chrome and self.is_whereby_open and len(self.driver.window_handles) > 1
 
-    def enter_room(self, room_url: str) -> None:
-        username = f'{uuid.uuid4()}'
+    def enter_room(self, room_url: str) -> bool:
+        username = self.generator()
         self._room_url = room_url
 
         if self.is_whereby_open:
@@ -103,23 +108,24 @@ class Appir(object):  # noqa: WPS214
         elif self.is_chrome:
             self._chrome_enter_room(username)
 
-        self._append_user(username)
+        return self._append_user(username)
 
     def enter_login(self, username: str):
-        enter_name = WebDriverWait(self.driver, self.max_timeout).until(
+
+        enter_name = WebDriverWait(self.driver, self.max_timeout, poll_frequency=self.min_poll_timeout).until(
             EC.presence_of_element_located((By.NAME, 'nickname')),
         )
 
         enter_name.send_keys(username)
 
-        continue_btn = WebDriverWait(self.driver, self.max_timeout).until(
+        continue_btn = WebDriverWait(self.driver, self.max_timeout, poll_frequency=self.min_poll_timeout).until(
             EC.presence_of_element_located((By.XPATH, '//div[contains(text(), "Continue")]')),
         )
 
         continue_btn.click()
 
     def join_room(self):
-        join_btn = WebDriverWait(self.driver, self.max_timeout).until(
+        join_btn = WebDriverWait(self.driver, self.max_timeout, poll_frequency=self.min_poll_timeout).until(
             EC.presence_of_element_located((By.XPATH, '//div[contains(text(), "Join meeting")]')),
         )
 
@@ -128,7 +134,7 @@ class Appir(object):  # noqa: WPS214
     def check_locked(self, username):
         self._cancel_knock()
         try:
-            knock_btn = WebDriverWait(self.driver, self.min_timeout).until(
+            knock_btn = WebDriverWait(self.driver, self.min_timeout, poll_frequency=self.min_poll_timeout).until(
                 EC.presence_of_element_located((By.XPATH, '//div[contains(text(), "Knock")]')),
             )
         except TimeoutException:
@@ -141,7 +147,7 @@ class Appir(object):  # noqa: WPS214
         self._logger.info('Knock in %s, sleep %d...', self._room_url, wait_time)
 
         try:
-            WebDriverWait(self.driver, wait_time, poll_frequency=0.1).until(
+            WebDriverWait(self.driver, wait_time, poll_frequency=self.min_poll_timeout).until(
                 EC.presence_of_element_located((By.XPATH, '//figcaption[contains(text(), "Chat")]')),
             )
         except TimeoutException:
@@ -179,13 +185,13 @@ class Appir(object):  # noqa: WPS214
             self._check_ban(window, callback)
 
     def send_chat(self, msg: str) -> None:
-        chat_btn = WebDriverWait(self.driver, self.max_timeout).until(
+        chat_btn = WebDriverWait(self.driver, self.max_timeout, poll_frequency=self.min_poll_timeout).until(
             EC.presence_of_element_located((By.CLASS_NAME, 'jstest-open-chat-button')),
         )
 
         chat_btn.click()
 
-        message_area = WebDriverWait(self.driver, self.max_timeout).until(
+        message_area = WebDriverWait(self.driver, self.max_timeout, poll_frequency=self.min_poll_timeout).until(
             EC.presence_of_element_located((By.NAME, 'message')),
         )
 
@@ -197,14 +203,14 @@ class Appir(object):  # noqa: WPS214
     def start_youtube(self, link: str) -> None:
         self.send_chat(link)
 
-        start_youtube = WebDriverWait(self.driver, self.max_timeout).until(
+        start_youtube = WebDriverWait(self.driver, self.max_timeout, poll_frequency=self.min_poll_timeout).until(
             EC.presence_of_element_located((By.XPATH, '//div[contains(text(), "View together in room")]')),
         )
 
         start_youtube.click()
 
         try:
-            WebDriverWait(self.driver, self.youtube_timeout).until(
+            WebDriverWait(self.driver, self.one_minute_timeout).until(
                 EC.presence_of_element_located((By.XPATH, '//div[contains(text(), "Stop sharing")]')),
             )
         except TimeoutException:
@@ -226,7 +232,7 @@ class Appir(object):  # noqa: WPS214
 
     def _fix_cam_mic(self) -> None:
         try:
-            WebDriverWait(self.driver, self.youtube_timeout).until(
+            WebDriverWait(self.driver, self.one_minute_timeout, poll_frequency=self.min_poll_timeout).until(
                 EC.presence_of_element_located((By.TAG_NAME, 'figure')),
             )
         except TimeoutException:
@@ -241,8 +247,10 @@ class Appir(object):  # noqa: WPS214
         if not self.is_fool:
             self.users[self.driver.current_window_handle] = username
             self._logger.info('User %s login', username)
-            return
+            return True
+        self.driver.close()
         self._logger.warning('Room %s is fool, user %s does not need to be added', self._room_url, username)
+        return False
 
     def _ff_enter_room(self, username):
         self.enter_login(username)
@@ -261,7 +269,7 @@ class Appir(object):  # noqa: WPS214
 
     def _cancel_knock(self):
         try:
-            cancel_btn = WebDriverWait(self.driver, self.min_timeout, poll_frequency=0.1).until(
+            cancel_btn = WebDriverWait(self.driver, self.min_timeout, poll_frequency=self.min_poll_timeout).until(
                 EC.presence_of_element_located((By.XPATH, '//div[contains(text(), "Cancel")]')),
             )
         except TimeoutException:

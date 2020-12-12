@@ -7,7 +7,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC  # noqa: N812
 from selenium.webdriver.support.wait import WebDriverWait
-from wipe.browsers.abc import ABCWipeDriver
+from wipe.browsers.abc_driver import ABCWipeDriver
 
 
 class Chrome(webdriver.Chrome, ABCWipeDriver):

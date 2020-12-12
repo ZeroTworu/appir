@@ -13,7 +13,7 @@ class WipeStrategy(Appir):
     description = 'DESCRIPTION WHERE'
 
     def __init__(self, params: WipeParams):
-        patch_http_connection_pool(maxsize=25)
+        patch_http_connection_pool(maxsize=100)
 
         self.params = params.others_params
         self.room_url = params.room_url
@@ -54,23 +54,24 @@ class FillRoomStrategy(WipeStrategy):
     def run_strategy(self):
         while self.is_working:
             self.mutex.acquire()
-            self.enter_room(room_url=self.room_url)
-            self.need_check = not self.is_fool
+            self.need_check = self.enter_room(room_url=self.room_url)
             self.mutex.release()
-            time.sleep(1)
+            time.sleep(self.max_timeout)
             if not self.need_check:
                 self.is_waiting_ban = True
-                time.sleep(self.min_timeout)
                 self._logger.warning('Room %s fool, waiting for bans...', self.room_url)
                 self.wait_ban()
 
     def check_thread(self):
-        need_work = not self.is_waiting_ban and self.need_check and self.is_working
-        while need_work:
+        while self.is_need_thread:
             self.mutex.acquire()
             self.check_and_handle_ban()
             self.mutex.release()
             time.sleep(0.5)
+
+    @property
+    def is_need_thread(self):
+        return not self.is_waiting_ban and self.need_check and self.is_working
 
     def _ban_callback(self, *args, **kwargs):
         self.is_waiting_ban = False
@@ -79,10 +80,11 @@ class FillRoomStrategy(WipeStrategy):
 
 class YouTubeStrategy(WipeStrategy):
     links = None
+    youtube_link = None
     description = 'Постоянно заходит рандом и включает ютуб'
 
     def run_strategy(self):
-        youtube_link = self.params.get('link')
+        self.youtube_link = self.params.get('link')  # noqa: WPS601
         youtube_file = self.params.get('file', None)
         if youtube_file is not None:
             self._parse_youtube_file(youtube_file)
@@ -90,21 +92,27 @@ class YouTubeStrategy(WipeStrategy):
         while self.is_working:
             wait_time = random.randint(5, 20)
             self.enter_room(room_url=self.room_url)
+            if bool(self.users):
+                self._start_youtube()
 
-            if self.links is not None:
-                youtube_link = random.choice(self.links)
-                self.start_youtube(youtube_link)
+                self._logger.warning('Youtube %s started wait %d seconds...', self.youtube_link, wait_time)
+                time.sleep(wait_time)
+
+                self.try_stop_youtube()
+                self.exit_room()
             else:
-                self.start_youtube(youtube_link)
-
-            self._logger.warning('Youtube %s started wait %d seconds...', youtube_link, wait_time)
-            time.sleep(wait_time)
-
-            self.try_stop_youtube()
-            self.exit_room()
+                self._logger.info('Possible room is fool, waiting 1 min')
+                time.sleep(self.one_minute_timeout)
 
     def _ban_callback(self, *args, **kwargs):
         raise NotImplementedError
+
+    def _start_youtube(self):
+        if self.links is not None:
+            self.youtube_link = random.choice(self.links)  # noqa: WPS601
+            self.start_youtube(self.youtube_link)
+        else:
+            self.start_youtube(self.youtube_link)
 
     def _parse_youtube_file(self, file):
         with open(file, 'r') as read:

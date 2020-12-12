@@ -3,7 +3,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.firefox.options import FirefoxProfile, Options
 from selenium.webdriver.support import expected_conditions as EC  # noqa: N812
 from selenium.webdriver.support.wait import WebDriverWait
-from wipe.browsers.abc import ABCWipeDriver
+from wipe.browsers.abc_driver import ABCWipeDriver
 
 
 class Firefox(webdriver.Firefox, ABCWipeDriver):
@@ -37,9 +37,7 @@ class Firefox(webdriver.Firefox, ABCWipeDriver):
 
     def close_tab(self) -> None:
         if len(self.window_handles) > 1:
-            self.execute('SET_CONTEXT', {'context': 'chrome'})
-            self.send_keys_to_url_bar(Keys.CONTROL, 'w')
-            self.execute('SET_CONTEXT', {'context': 'content'})
+            self.close()
             self.switch_tab_back()
 
     def _set_options(self):

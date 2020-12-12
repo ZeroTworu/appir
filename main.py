@@ -11,7 +11,7 @@ logging.basicConfig(format='%(asctime)s: %(message)s', level=logging.INFO)
 
 def parse_args(args) -> dict:
     result = vars(args)  # noqa: WPS421
-    for param in ('strategy', 'url', 'knock', 'headless', 'browser', 'fake_media'):
+    for param in ('strategy', 'url', 'knock', 'headless', 'browser', 'fake_media', 'name_generator', 'name_length'):
         result.pop(param)
     return result
 
@@ -29,6 +29,8 @@ def handle_main(args):
         headless=args.headless == '1',
         knock=args.knock == '1',
         fake_media=args.fake_media == '1',
+        generator=args.name_generator,
+        generator_length=args.name_length,
         others_params=parse_args(args),
         sid=f'{uuid.uuid4()}',
     )
@@ -57,6 +59,13 @@ if __name__ == '__main__':
     parser.add_argument('--knock', help='knock to conference if locked', default='1')
     parser.add_argument('--headless', help='if 1 run without GUI', default='1')
     parser.add_argument('--fake-media', help='if 1 browser use fake video&audio streams', default='1')
+    parser.add_argument(
+        '--name-generator',
+        help='Generator to generate names (uuid, russian, english, mixed, zalgo)',
+        default='zalgo',
+    )
+
+    parser.add_argument('--name-length', type=int, help='length of generated name', default=10)
 
     args = parser.parse_args()
 

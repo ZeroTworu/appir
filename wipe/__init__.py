@@ -1,8 +1,8 @@
-__version__ = '0.2.3'  # noqa: WPS410
+__version__ = '0.2.5'  # noqa: WPS410
 
 from wipe.wipe import FillRoomStrategy, YouTubeStrategy
 
-STRATEGIES = {
+STRATEGIES = {  # noqa: WPS407
     'fill': FillRoomStrategy,
     'youtube': YouTubeStrategy,
 }
