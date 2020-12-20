@@ -22,6 +22,7 @@ class Chrome(webdriver.Chrome, ABCWipeDriver):
         self.options.add_argument('--mute-audio')
         self.options.add_argument('--no-sandbox')
         self.options.add_argument('--incognito')
+        self.options.add_experimental_option('prefs', {'profile.default_content_setting_values': {'images': 2}})
         if fake_media:
             self.options.add_argument('--use-fake-device-for-media-stream')
             self.options.add_argument('--use-fake-ui-for-media-stream')

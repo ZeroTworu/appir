@@ -1,5 +1,4 @@
 from selenium import webdriver
-from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.firefox.options import FirefoxProfile, Options
 from selenium.webdriver.support import expected_conditions as EC  # noqa: N812
 from selenium.webdriver.support.wait import WebDriverWait
@@ -24,15 +23,10 @@ class Firefox(webdriver.Firefox, ABCWipeDriver):
 
     def open_new_tab(self) -> None:
         current_windows_count = len(self.window_handles)
-
-        self.execute('SET_CONTEXT', {'context': 'chrome'})
-        self.send_keys_to_url_bar(Keys.CONTROL, 't')
-
+        self.execute_script('window.open();')
         WebDriverWait(self, self.max_timeout * 2).until(
             EC.number_of_windows_to_be(current_windows_count + 1),
         )
-
-        self.execute('SET_CONTEXT', {'context': 'content'})
         self.switch_tab_forward()
 
     def close_tab(self) -> None:
@@ -47,5 +41,6 @@ class Firefox(webdriver.Firefox, ABCWipeDriver):
         self.profile.set_preference('browser.tabs.remote.autostart', True)
         self.profile.set_preference('browser.privatebrowsing.autostart', True)
         self.profile.set_preference('media.volume_scale', '0.0')
+        self.profile.set_preference('permissions.default.image', 2)
         if self.fake_media:
             self.options.set_preference('media.navigator.streams.fake', True)

@@ -4,6 +4,7 @@ import time
 from threading import Lock, Thread
 
 from wipe.appir import Appir
+from wipe.managers import StructureExceptionHandler
 from wipe.params import WipeParams
 from wipe.patches import patch_http_connection_pool
 
@@ -17,11 +18,29 @@ class WipeStrategy(Appir):
 
         self.params = params.others_params
         self.room_url = params.room_url
-        self.is_waiting_ban = False
+        self._max_users = params.max_users
+        self._is_waiting_ban = False
+
         super().__init__(params)
 
+        self.seh = StructureExceptionHandler(
+            logger=params.logger,
+            exc_callback=self.re_run,
+            normal_callback=self.driver.quit,
+        )
+
+    def re_run(self):
+        self.users = {}
+        self.opened_new_tab = False
+        self._init_driver()
+        self.run_strategy()
+
+    @property
+    def check_max_users(self):
+        return len(self.users) >= self._max_users or self._max_users == 0
+
     def wait_ban(self):
-        while self.is_waiting_ban and self.is_working:
+        while self._is_waiting_ban and self.is_working:
             self.check_and_handle_ban(self._ban_callback)
 
     def stop_wipe(self):
@@ -52,12 +71,16 @@ class FillRoomStrategy(WipeStrategy):
         self.check_thread.start()
 
     def run_strategy(self):
+        with self.seh:
+            self._run_strategy()
+
+    def _run_strategy(self):
         while self.is_working:
             self.mutex.acquire()
             self.need_check = self.enter_room(room_url=self.room_url)
             self.mutex.release()
             time.sleep(self.max_timeout)
-            if not self.need_check:
+            if not self.need_check or self.check_max_users:
                 self.is_waiting_ban = True
                 self._logger.warning('Room %s fool, waiting for bans...', self.room_url)
                 self.wait_ban()
@@ -79,12 +102,19 @@ class FillRoomStrategy(WipeStrategy):
 
 
 class YouTubeStrategy(WipeStrategy):
-    links = None
-    youtube_link = None
     description = 'Постоянно заходит рандом и включает ютуб'
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.youtube_link = None
+        self.links = None
+
     def run_strategy(self):
-        self.youtube_link = self.params.get('link')  # noqa: WPS601
+        with self.seh:
+            self._run_strategy()
+
+    def _run_strategy(self):
+        self.youtube_link = self.params.get('link')
         youtube_file = self.params.get('file', None)
         if youtube_file is not None:
             self._parse_youtube_file(youtube_file)
@@ -109,11 +139,33 @@ class YouTubeStrategy(WipeStrategy):
 
     def _start_youtube(self):
         if self.links is not None:
-            self.youtube_link = random.choice(self.links)  # noqa: WPS601
+            self.youtube_link = random.choice(self.links)
             self.start_youtube(self.youtube_link)
         else:
             self.start_youtube(self.youtube_link)
 
     def _parse_youtube_file(self, file):
         with open(file, 'r') as read:
-            self.links = read.readlines()  # noqa: WPS601
+            self.links = read.readlines()
+
+
+class EnterExitStrategy(WipeStrategy):
+
+    description = 'Стратегия заёба, рандом заходит-выходит (эффективно с fake-media)'
+
+    def run_strategy(self):
+        with self.seh:
+            self._run_strategy()
+
+    def _run_strategy(self):
+        while self.is_working:
+            wait_time = random.randint(1, 5)
+            self.enter_room(room_url=self.room_url)
+            self._logger.info('Entered at %s', self.room_url)
+            if self.check_max_users:
+                self._logger.info('Max users, now wait %d', wait_time)
+                time.sleep(wait_time)
+                self.exit_room()
+
+    def _ban_callback(self):
+        raise NotImplementedError

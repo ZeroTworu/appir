@@ -16,3 +16,4 @@ class WipeParams(object):
     logger: logging = attr.ib(default=None)
     generator: str = attr.ib(default='zalgo')
     generator_length: int = attr.ib(default=10)
+    max_users: int = attr.ib(default=12)

@@ -1,4 +1,3 @@
-import atexit
 import logging
 import random
 import time
@@ -21,7 +20,7 @@ drivers = {
 
 class Appir(NameMixin):  # noqa: WPS214
 
-    max_timeout = 10
+    max_timeout = 30
 
     one_minute_timeout = 60
 
@@ -33,21 +32,11 @@ class Appir(NameMixin):  # noqa: WPS214
 
     def __init__(self, params: WipeParams):
         super().__init__(params.generator, params.generator_length)
-        self.generator = self.get_generator()
 
-        driver_class = drivers.get(params.browser.lower(), None)
-        if driver_class is None:
-            logging.error('Unknown browser %s', params.browser)
-            return
-
-        self.is_working = True
-        self._room_url: str = ''
-        self.opened_new_tab = False
-
-        self.driver = driver_class(headless=params.headless, fake_media=params.fake_media)
-        self.knock = params.knock
+        self._params = params
         self._browser = params.browser
         self._sid = params.sid
+        self._room_url: str = ''
 
         if params.logger is not None:
             self._logger = params.logger
@@ -56,7 +45,17 @@ class Appir(NameMixin):  # noqa: WPS214
 
         self._logger.setLevel(logging.DEBUG)
 
-        atexit.register(self.driver.quit)
+        self._driver_class = drivers.get(params.browser.lower(), None)
+        if self._driver_class is None:
+            logging.error('Unknown browser %s', params.browser)
+            return
+
+        self.is_working = True
+        self.opened_new_tab = False
+        self.knock = params.knock
+        self.generator = self.get_generator()
+
+        self._init_driver()
 
     @property
     def is_whereby_open(self) -> bool:
@@ -87,6 +86,14 @@ class Appir(NameMixin):  # noqa: WPS214
         return True
 
     @property
+    def no_access(self):
+        try:
+            self.driver.find_element_by_xpath('//strong[contains(text(), "You’ve not been granted access")]')
+        except NoSuchElementException:
+            return False
+        return True
+
+    @property
     def dont_login(self):
         return self.is_chrome and self.is_whereby_open and len(self.driver.window_handles) > 1
 
@@ -112,7 +119,7 @@ class Appir(NameMixin):  # noqa: WPS214
 
     def enter_login(self, username: str):
 
-        enter_name = WebDriverWait(self.driver, self.max_timeout, poll_frequency=self.min_poll_timeout).until(
+        enter_name = WebDriverWait(self.driver, self.one_minute_timeout, poll_frequency=self.min_poll_timeout).until(
             EC.presence_of_element_located((By.NAME, 'nickname')),
         )
 
@@ -125,6 +132,11 @@ class Appir(NameMixin):  # noqa: WPS214
         continue_btn.click()
 
     def join_room(self):
+        if self.no_access:
+            self._logger.warning('No access to room %s for close tab...', self._room_url)
+            self.driver.close_tab()
+            return
+
         join_btn = WebDriverWait(self.driver, self.max_timeout, poll_frequency=self.min_poll_timeout).until(
             EC.presence_of_element_located((By.XPATH, '//div[contains(text(), "Join meeting")]')),
         )
@@ -277,3 +289,6 @@ class Appir(NameMixin):  # noqa: WPS214
 
         cancel_btn.click()
         return True
+
+    def _init_driver(self):
+        self.driver = self._driver_class(headless=self._params.headless, fake_media=self._params.fake_media)

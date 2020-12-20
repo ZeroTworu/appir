@@ -1,6 +1,6 @@
 # flake8: noqa
 import uuid
-from random import choice
+from random import choice, randint
 
 
 class NameMixin(object):
@@ -24,18 +24,27 @@ class NameMixin(object):
     )
 
     ENGLISH_ABC = [
-        'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l',
-        'z', 'x', 'c', 'v', 'b', 'n', 'm', ' ',
+        'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o',
+        'p', 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k',
+        'l', 'z', 'x', 'c', 'v', 'b', 'n', 'm', ' ',
     ]
 
     RUSSIAN_ABC = [
-        'й', 'ц', 'у', 'к', 'е', 'н', 'г', 'ш', 'щ', 'з', 'х', 'ъ', 'ф', 'ы', 'в', 'а', 'п', 'р', 'о', 'л',
-        'д', 'ж', '', 'э', 'я', 'ч', 'с', 'м', 'и', 'т', 'ь', 'б', 'ю', ' ',
+        'й', 'ц', 'у', 'к', 'е', 'н', 'г', 'ш', 'щ', 'ю', ' ',
+        'з', 'х', 'ъ', 'ф', 'ы', 'в', 'а', 'п', 'р', 'т', 'ь'
+        'о', 'л', 'д', 'ж', 'э', 'я', 'ч', 'с', 'м', 'и', 'б',
     ]
 
     def __init__(self, generator_name: str, length=10):
         self.length = length
         self.generator_name = generator_name
+        self.generators = {
+            self.UUID: self.uuid,
+            self.RUSSIAN: self.russian,
+            self.ENGLISH: self.english,
+            self.MIXED: self.mixed,
+            self.ZALGO: self.zalgo,
+        }
 
     def uuid(self):
         return f'{uuid.uuid4()}'
@@ -46,26 +55,18 @@ class NameMixin(object):
     def english(self):
         return ''.join([choice(self.ENGLISH_ABC) for _ in range(self.length)])
 
-    def mixed(self, join=''):
+    def mixed(self):
         abc = self.RUSSIAN_ABC
         abc.extend(self.ENGLISH_ABC)
-        return join.join([choice(abc) for _ in range(self.length)])
+        return ''.join([choice(abc) for _ in range(self.length)])
 
     def zalgo(self):
-        marks = list(map(chr, range(768, 879)))
-        string = self.mixed(join=' ')
-        words = string.split()
-        return ' '.join(''.join(c + ''.join(choice(marks) for _ in range(i // 2 + 1)) * c.isalnum() for c in word) for i, word in enumerate(words))
+        marks = list(map(chr, range(358, 989)))
+        rnd_marks = marks[:randint(5, self.length)]
+        return ''.join(''.join(c + ''.join(choice(marks) for _ in range(randint(5, 20))) for c in rnd_marks))
 
     def get_generator(self):
-        if self.generator_name == self.UUID:
-            return self.uuid
-        elif self.generator_name == self.RUSSIAN:
-            return self.russian
-        elif self.generator_name == self.ENGLISH:
-            return self.english
-        elif self.generator_name == self.MIXED:
-            return self.mixed
-        elif self.generator_name == self.ZALGO:
-            return self.zalgo
-        raise ValueError(f'Unknown generator type {self.generator_name}')
+        generator = self.generators.get(self.generator_name, None)
+        if generator is None:
+            raise ValueError(f'Unknown generator type {self.generator_name}')
+        return generator

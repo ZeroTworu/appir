@@ -9,13 +9,6 @@ from wipe.wipe import WipeParams
 logging.basicConfig(format='%(asctime)s: %(message)s', level=logging.INFO)
 
 
-def parse_args(args) -> dict:
-    result = vars(args)  # noqa: WPS421
-    for param in ('strategy', 'url', 'knock', 'headless', 'browser', 'fake_media', 'name_generator', 'name_length'):
-        result.pop(param)
-    return result
-
-
 def handle_main(args):
     strategy_class = STRATEGIES.get(args.strategy, None)
 
@@ -31,7 +24,8 @@ def handle_main(args):
         fake_media=args.fake_media == '1',
         generator=args.name_generator,
         generator_length=args.name_length,
-        others_params=parse_args(args),
+        others_params={'link': args.link, 'file': args.file},
+        max_users=args.max_users,
         sid=f'{uuid.uuid4()}',
     )
 
@@ -46,6 +40,7 @@ if __name__ == '__main__':
         help="""
         `fill` - try to fill room by bots
         `youtube` - flood by youtube content
+        `ee` - Enter&Exit random into room on few seconds, effectively with `--fake-media=1`
         """,
     )
     parser.add_argument(
@@ -66,6 +61,7 @@ if __name__ == '__main__':
     )
 
     parser.add_argument('--name-length', type=int, help='length of generated name', default=10)
+    parser.add_argument('--max-users', type=int, help='Max users in room, 0 for infinity, default 12', default=12)
 
     args = parser.parse_args()
 
