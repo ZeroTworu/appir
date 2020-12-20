@@ -81,7 +81,7 @@ class FillRoomStrategy(WipeStrategy):
             self.mutex.release()
             time.sleep(self.max_timeout)
             if not self.need_check or self.check_max_users:
-                self.is_waiting_ban = True
+                self._is_waiting_ban = True
                 self._logger.warning('Room %s fool, waiting for bans...', self.room_url)
                 self.wait_ban()
 
@@ -94,7 +94,7 @@ class FillRoomStrategy(WipeStrategy):
 
     @property
     def is_need_thread(self):
-        return not self.is_waiting_ban and self.need_check and self.is_working
+        return not self._is_waiting_ban and self.need_check and self.is_working
 
     def _ban_callback(self, *args, **kwargs):
         self.is_waiting_ban = False
