@@ -3,7 +3,7 @@ import uuid
 from random import choice, randint
 
 
-class NameMixin(object):
+class NameGenerator(object):
 
     UUID = 'uuid'
 

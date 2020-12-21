@@ -3,8 +3,9 @@ import logging
 import uuid
 from argparse import RawTextHelpFormatter
 
-from wipe import STRATEGIES, __version__
-from wipe.wipe import WipeParams
+from wipe import __version__
+from wipe.params import WipeParams
+from wipe.strategies import STRATEGIES
 
 logging.basicConfig(format='%(asctime)s: %(message)s', level=logging.INFO)
 
@@ -20,7 +21,6 @@ def handle_main(args):
         room_url=args.url,
         browser=args.browser,
         headless=args.headless == '1',
-        knock=args.knock == '1',
         fake_media=args.fake_media == '1',
         generator=args.name_generator,
         generator_length=args.name_length,
@@ -30,7 +30,7 @@ def handle_main(args):
     )
 
     strategy = strategy_class(wipe_params)
-    strategy.run_strategy()
+    strategy.run()
 
 
 if __name__ == '__main__':
@@ -51,7 +51,6 @@ if __name__ == '__main__':
     parser.add_argument('--file', help='file with youtube links, one line - one link')
 
     parser.add_argument('--browser', help='browser for user, chrome or firefox default - firefox', default='firefox')
-    parser.add_argument('--knock', help='knock to conference if locked', default='1')
     parser.add_argument('--headless', help='if 1 run without GUI', default='1')
     parser.add_argument('--fake-media', help='if 1 browser use fake video&audio streams', default='1')
     parser.add_argument(
