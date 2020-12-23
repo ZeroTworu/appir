@@ -4,10 +4,13 @@ import uuid
 from argparse import RawTextHelpFormatter
 
 from wipe import __version__
-from wipe.params import WipeParams
+from wipe.params import WipeParams, PreparedStrategy
 from wipe.strategies import STRATEGIES
+from wipe.threads import WipeThreadManager
 
-logging.basicConfig(format='%(asctime)s: %(message)s', level=logging.INFO)
+logging.basicConfig(format='%(threadName)s-%(asctime)s: %(message)s', level=logging.INFO, datefmt='%H:%M:%S')
+
+logging.getLogger('urllib3.connectionpool').setLevel(logging.CRITICAL)
 
 
 def handle_main(args):
@@ -24,13 +27,14 @@ def handle_main(args):
         fake_media=args.fake_media == '1',
         generator=args.name_generator,
         generator_length=args.name_length,
-        others_params={'link': args.link, 'file': args.file},
+        others_params={'link': args.link, 'file': args.file, 'phrase': args.phrase},
         max_users=args.max_users,
         sid=f'{uuid.uuid4()}',
     )
 
-    strategy = strategy_class(wipe_params)
-    strategy.run()
+    strategy = PreparedStrategy(params=wipe_params, strategy_class=strategy_class)
+    manager = WipeThreadManager(strategy=strategy, threads_count=args.threads)
+    manager.start()
 
 
 if __name__ == '__main__':
@@ -41,6 +45,7 @@ if __name__ == '__main__':
         `fill` - try to fill room by bots
         `youtube` - flood by youtube content
         `ee` - Enter&Exit random into room on few seconds, effectively with `--fake-media=1`
+        `flood` - just flood in chat
         """,
     )
     parser.add_argument(
@@ -48,7 +53,7 @@ if __name__ == '__main__':
         help='room url',
     )
     parser.add_argument('--link', help='youtube link')
-    parser.add_argument('--file', help='file with youtube links, one line - one link')
+    parser.add_argument('--file', help='file with youtube links or flood phrases, one line - one link')
 
     parser.add_argument('--browser', help='browser for user, chrome or firefox default - firefox', default='firefox')
     parser.add_argument('--headless', help='if 1 run without GUI', default='1')
@@ -61,6 +66,8 @@ if __name__ == '__main__':
 
     parser.add_argument('--name-length', type=int, help='length of generated name', default=10)
     parser.add_argument('--max-users', type=int, help='Max users in room, 0 for infinity, default 12', default=12)
+    parser.add_argument('--phrase', type=str, help='Flood phrase', default='ziga-zaga!')
+    parser.add_argument('--threads', type=int, help='count of wipe threads', default=1)
 
     args = parser.parse_args()
 

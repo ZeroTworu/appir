@@ -12,11 +12,13 @@ from wipe.threads import WipeThread
 
 app = Flask(__name__)
 
-logging.basicConfig(format='%(asctime)s: %(message)s', level=logging.INFO)
+logging.basicConfig(format='%(threadName)s-%(asctime)s: %(message)s', level=logging.INFO, datefmt='%H:%M:%S')
+logging.getLogger('urllib3.connectionpool').setLevel(logging.CRITICAL)
+
 logger = logging.getLogger(__name__)
 logger.addHandler(WebHandler())
 
-flask_log = logging.getLogger('web')
+flask_log = logging.getLogger('werkzeug')
 flask_log.setLevel(logging.ERROR)
 
 
@@ -50,7 +52,7 @@ def run_wipe(form_data):
     )
 
     strategy = strategy_class(wipe_params)
-    thread = WipeThread(target=strategy.run, strategy=strategy, name=form_data['sid'])
+    thread = WipeThread(strategy=strategy, name=form_data['sid'])
     threads[form_data['sid']] = thread
     thread.start()
 

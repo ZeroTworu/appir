@@ -17,13 +17,13 @@ class FillRoomStrategy(AbstractWipeStrategy):
         self.check_thread = None
         self.init_control()
 
-    def re_run(self):
+    def re_start(self):
         self.need_check = False
         self._is_waiting_ban = False
         self.mutex.release()
         time.sleep(2)
         self.check_thread.join()
-        super().re_run()
+        super().re_start()
         self.init_control()
 
     def init_control(self):
@@ -34,12 +34,12 @@ class FillRoomStrategy(AbstractWipeStrategy):
     def run_strategy(self):
         while self.is_working:
             self.mutex.acquire()
-            self.need_check = self.enter_room(room_url=self.room_url)
+            self.need_check = self.enter_room(room_url=self._room_url)
             self.mutex.release()
             time.sleep(self.max_timeout)
             if not self.need_check or self.check_max_users:
                 self._is_waiting_ban = True
-                self._logger.warning('Room %s fool, waiting for bans...', self.room_url)
+                self._logger.warning('Room %s fool, waiting for bans...', self._room_url)
                 self.wait_ban()
 
     def check_thread(self):

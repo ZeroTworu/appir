@@ -13,46 +13,46 @@ class AbstractWipeStrategy(Appir):  # noqa:  WPS214
 
     def __init__(self, params: WipeParams):
         patch_http_connection_pool(maxsize=100)
+        super().__init__(params)
 
-        self.params = params.others_params
-        self.room_url = params.room_url
+        self.strategy_params = params.others_params
         self._max_users = params.max_users
         self._is_waiting_ban = False
 
-        super().__init__(params)
-
         self.seh = StructureExceptionHandler(
             logger=params.logger,
-            exc_callback=self.re_run,
+            exc_callback=self.re_start,
             normal_callback=self.driver.quit,
         )
 
     @property
     def check_max_users(self):
-        return len(self.users) >= self._max_users and self._max_users != 0
+        return len(self.users) >= self._max_users != 0  # noqa: WPS409
 
-    def re_run(self):
+    def re_start(self):
+        self.users = {}
+        self._opened_new_tab = False
+
         self._logger.warning('Crash! Will restart driver...')
         self.driver.quit()
         self._logger.info('Old driver stop')
-        self.users = {}
-        self._opened_new_tab = False
         self._logger.info('Init new driver...')
         self._init_driver()
-        self.run()
+        self.start()
 
-    def run(self):
+    def start(self):
         with self.seh:
             self.run_strategy()
+
+    def stop(self):
+        self.is_working = False
+        time.sleep(self.max_timeout)
+        self.driver.quit()
+        self._logger.info('Stopped sid %s', self._sid)
 
     def wait_ban(self):
         while self._is_waiting_ban and self.is_working:
             self.check_and_handle_ban(self._ban_callback)
-
-    def stop_wipe(self):
-        self.is_working = False
-        time.sleep(self.max_timeout)
-        self.driver.quit()
 
     @abc.abstractmethod
     def _ban_callback(self):

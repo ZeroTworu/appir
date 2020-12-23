@@ -22,10 +22,7 @@ class StructureExceptionHandler(object):
         is_exc = exc_type is not None and exc_val is not None and exc_tb is not None
 
         if is_exc and not isinstance(exc_val, KeyboardInterrupt):
-            if isinstance(exc_val, TimeoutException):
-                self._logger.warning('Timeout exc')
-            else:
-                self._logger.exception('Unhandled exception %s', exc_val)
+            self._logger.exception('Unhandled exception %s', exc_val)
             if self._exc_callback is not None:
                 self._exc_callback()
         else:

@@ -21,7 +21,7 @@ drivers = {
 
 class Appir(object):  # noqa: WPS214
 
-    max_timeout = 30
+    max_timeout = 5
 
     one_minute_timeout = 60
 
@@ -35,7 +35,7 @@ class Appir(object):  # noqa: WPS214
         self._params = params
         self._browser = params.browser
         self._sid = params.sid
-        self._room_url: str = ''
+        self._room_url: str = params.room_url
 
         if params.logger is not None:
             self._logger = params.logger
@@ -120,7 +120,7 @@ class Appir(object):  # noqa: WPS214
 
     def enter_login(self, username: str):
 
-        enter_name = WebDriverWait(self.driver, self.one_minute_timeout, poll_frequency=self.min_poll_timeout).until(
+        enter_name = WebDriverWait(self.driver, self.max_timeout, poll_frequency=self.min_poll_timeout).until(
             EC.presence_of_element_located((By.NAME, 'nickname')),
         )
 
@@ -171,18 +171,20 @@ class Appir(object):  # noqa: WPS214
         self._logger.info('User %s successfully knocked to room %s.', username, self._room_url)
         return True
 
+    def refresh_room(self):
+        self._logger.info('Refreshing room for %s', self.users[self.driver.current_window_handle])
+        self.driver.refresh()
+        self.enter_login(self._generator())
+        if self.is_firefox:
+            self.join_room()
+
     def exit_room(self) -> None:
         current_window = self.driver.current_window_handle
-        user = self.users[current_window]
-
-        try:
-            exit_btn = self.driver.find_element_by_class_name('jstest-leave-room-button')
-        except NoSuchElementException:
-            self._logger.warning('Cannot found exit btn %s', user)
-            return
-
-        exit_btn.click()
+        user = self.users.get(current_window, None)
         self.driver.close_tab()
+        if user is None:
+            self._logger.warning('Try get non-existent user %s, close tab only', current_window)
+            return
         self.users.pop(current_window)
         self._logger.info('User %s left room', user)
 
