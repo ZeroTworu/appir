@@ -36,6 +36,7 @@ class Appir(object):  # noqa: WPS214
         self._browser = params.browser
         self._sid = params.sid
         self._room_url: str = params.room_url
+        self._barrier = params.barrier
 
         if params.logger is not None:
             self._logger = params.logger
@@ -105,6 +106,10 @@ class Appir(object):  # noqa: WPS214
 
         self._logger.debug('Waiting replay from whereby for url %s', self._room_url)
         self.driver.get(room_url)
+
+        if self._barrier is not None:
+            self._barrier.wait()
+
         entered = False
         # FF каждую новую вкладку, открывает незлогиненной в аппир
         # Chrome даже в режиме инкогнида открывает залогиненной под первым username

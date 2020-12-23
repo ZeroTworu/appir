@@ -29,6 +29,7 @@ def handle_main(args):
         generator_length=args.name_length,
         others_params={'link': args.link, 'file': args.file, 'phrase': args.phrase},
         max_users=args.max_users,
+        use_barrier=args.use_barrier == '1',
         sid=f'{uuid.uuid4()}',
     )
 
@@ -68,6 +69,7 @@ if __name__ == '__main__':
     parser.add_argument('--max-users', type=int, help='Max users in room, 0 for infinity, default 12', default=12)
     parser.add_argument('--phrase', type=str, help='Flood phrase', default='ziga-zaga!')
     parser.add_argument('--threads', type=int, help='count of wipe threads', default=1)
+    parser.add_argument('--use-barrier', help='Use barrier for wipe threads', default='0')
 
     args = parser.parse_args()
 

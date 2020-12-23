@@ -1,4 +1,5 @@
 import logging
+from multiprocessing import Barrier
 
 import attr
 
@@ -16,6 +17,8 @@ class WipeParams(object):
     generator: str = attr.ib(default='zalgo')
     generator_length: int = attr.ib(default=10)
     max_users: int = attr.ib(default=12)
+    barrier: Barrier = attr.ib(default=None)
+    use_barrier: bool = attr.ib(default=False)
 
 
 @attr.s

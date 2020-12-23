@@ -11,6 +11,7 @@ class YouTubeStrategy(AbstractWipeStrategy):
         super().__init__(*args, **kwargs)
         self.youtube_link = None
         self.links = None
+        self.enter_room(room_url=self._room_url)
 
     def run_strategy(self):
         self.youtube_link = self.strategy_params.get('link')
@@ -20,15 +21,13 @@ class YouTubeStrategy(AbstractWipeStrategy):
 
         while self.is_working:
             wait_time = random.randint(20, 60)
-            self.enter_room(room_url=self._room_url)
             if bool(self.users):
                 if self._start_youtube():
 
                     self._logger.warning('Youtube %s started, wait %d seconds...', self.youtube_link, wait_time)
                     time.sleep(wait_time)
-
                     self.try_stop_youtube()
-                    self.exit_room()
+                    self.refresh_room()
                 else:
                     self._logger.warning('Possible Youtube disabled in %s or whereby lag', self._room_url)
             else:

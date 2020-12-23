@@ -1,4 +1,5 @@
 import random
+import threading
 import time
 
 from wipe.strategies.abc_strategy import AbstractWipeStrategy
@@ -10,6 +11,7 @@ class EnterRefreshStrategy(AbstractWipeStrategy):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, *kwargs)
+        self.name = threading.current_thread().getName()
         self.enter()
 
     def enter(self):
@@ -19,7 +21,7 @@ class EnterRefreshStrategy(AbstractWipeStrategy):
     def run_strategy(self):
         while self.is_working:
             wait_time = random.randint(4, 8)
-            self._logger.info('Max users, now wait %d', wait_time)
+            self._logger.info(f'{self.name} now wait %d', wait_time)
             time.sleep(wait_time)
             self.refresh_room()
 
