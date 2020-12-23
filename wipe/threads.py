@@ -15,8 +15,8 @@ class WipeThread(Thread):
         super().__init__(name=name)
 
     def run(self):
+        self.strategy = self.prepared_strategy.strategy_class(self.prepared_strategy.params)
         try:
-            self.strategy = self.prepared_strategy.strategy_class(self.prepared_strategy.params)
             self.strategy.start()
         except InvalidSessionIdException as err:
             logging.error('Error after stop %s', err)

@@ -4,7 +4,7 @@ import uuid
 from argparse import RawTextHelpFormatter
 
 from wipe import __version__
-from wipe.params import WipeParams, PreparedStrategy
+from wipe.params import PreparedStrategy, WipeParams
 from wipe.strategies import STRATEGIES
 from wipe.threads import WipeThreadManager
 
