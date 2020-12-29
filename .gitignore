@@ -21,3 +21,5 @@ vars.sh
 geckodriver.log
 youtube.txt
 flood.txt
+*.html
+*.png

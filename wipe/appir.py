@@ -124,10 +124,17 @@ class Appir(object):  # noqa: WPS214
         return self._append_user(username)
 
     def enter_login(self, username: str):
-
-        enter_name = WebDriverWait(self.driver, self.max_timeout, poll_frequency=self.min_poll_timeout).until(
-            EC.presence_of_element_located((By.NAME, 'nickname')),
-        )
+        try:
+            enter_name = WebDriverWait(
+                self.driver,
+                self.one_minute_timeout,
+                poll_frequency=self.min_poll_timeout,
+            ).until(
+                EC.presence_of_element_located((By.NAME, 'nickname')),
+            )
+        except TimeoutException:
+            self._logger.warning('Cannot get "nickname" for %s', username)
+            return False
 
         enter_name.send_keys(username)
 
@@ -136,6 +143,7 @@ class Appir(object):  # noqa: WPS214
         )
 
         continue_btn.click()
+        return True
 
     def join_room(self) -> bool:
         if self.no_access:
@@ -143,9 +151,17 @@ class Appir(object):  # noqa: WPS214
             self.driver.close_tab()
             return False
 
-        join_btn = WebDriverWait(self.driver, self.max_timeout, poll_frequency=self.min_poll_timeout).until(
-            EC.presence_of_element_located((By.XPATH, '//div[contains(text(), "Join meeting")]')),
-        )
+        try:
+            join_btn = WebDriverWait(
+                self.driver,
+                self.one_minute_timeout,
+                poll_frequency=self.min_poll_timeout,
+            ).until(
+                EC.presence_of_element_located((By.XPATH, '//div[contains(text(), "Join meeting")]')),
+            )
+        except TimeoutException:
+            self._logger.warning('Cannot found "Join meeting"')
+            return False
 
         join_btn.click()
         return True
@@ -177,11 +193,13 @@ class Appir(object):  # noqa: WPS214
         return True
 
     def refresh_room(self):
-        self._logger.info('Refreshing room for %s', self.users[self.driver.current_window_handle])
+        self._logger.info('Refreshing room...')
         self.driver.refresh()
         self.enter_login(self._generator())
         if self.is_firefox:
-            self.join_room()
+            if not self.join_room():
+                self._logger.warning('Cannot refresh room, re-enter...')
+                self.enter_room(self._room_url)
 
     def exit_room(self) -> None:
         current_window = self.driver.current_window_handle

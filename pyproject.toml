@@ -10,6 +10,7 @@ python = "^3.8"
 selenium = "^3.141.0"
 Flask = "^1.1.2"
 attrs = "^20.3.0"
+Flask-Classy = "^0.6.10"
 
 [tool.poetry.dev-dependencies]
 wemake-python-styleguide = "^0.14.1"

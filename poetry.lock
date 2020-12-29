@@ -289,6 +289,17 @@ docs = ["sphinx", "pallets-sphinx-themes", "sphinxcontrib-log-cabinet", "sphinx-
 dotenv = ["python-dotenv"]
 
 [[package]]
+name = "flask-classy"
+version = "0.6.10"
+description = "Class based views for Flask"
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+Flask = ">=0.9"
+
+[[package]]
 name = "gitdb"
 version = "4.0.5"
 description = "Git Object Database"
@@ -695,7 +706,7 @@ watchdog = ["watchdog"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "0db47cbe40fd84086403403481147a951416d734cea55ec360e20e6d4b207e13"
+content-hash = "f5b1964fd241cde87d06620321149644fa1f2d7352a40dc788fcdb79eeb9df31"
 
 [metadata.files]
 appnope = [
@@ -796,6 +807,9 @@ flake8-string-format = [
 flask = [
     {file = "Flask-1.1.2-py2.py3-none-any.whl", hash = "sha256:8a4fdd8936eba2512e9c85df320a37e694c93945b33ef33c89946a340a238557"},
     {file = "Flask-1.1.2.tar.gz", hash = "sha256:4efa1ae2d7c9865af48986de8aeb8504bf32c7f3d6fdc9353d34b21f4b127060"},
+]
+flask-classy = [
+    {file = "Flask-Classy-0.6.10.tar.gz", hash = "sha256:13c9b4312bff2bf5c6c45ba7d6da46d6bd81724dfc45b598f12438c230583aab"},
 ]
 gitdb = [
     {file = "gitdb-4.0.5-py3-none-any.whl", hash = "sha256:91f36bfb1ab7949b3b40e23736db18231bf7593edada2ba5c3a174a7b23657ac"},

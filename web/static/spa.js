@@ -28,11 +28,11 @@ $(document).ready(() => {
     })
 
     stop_btn.bind('click', () => {
-        $.getJSON(`/stop?sid=${sid}`, (res) => {
-            switch(res['status']){
+        $.getJSON(`/stop/${sid}`, (res) => {
+            switch (res['status']) {
                 case 'stopped':
                     change_btns(false)
-                     $('#logs').append('<div class="INFO">Остановлено.</div>')
+                    $('#logs').append('<div class="INFO">Остановлено.</div>')
                     clearInterval(update_interval)
                     break;
             }
@@ -56,7 +56,7 @@ function update_status() {
     const sid = $('#sid').val()
     const logs = $('#logs');
     const handler = () => {
-        $.getJSON(`/status?sid=${sid}`, (res) => {
+        $.getJSON(`/status/${sid}`, (res) => {
             for (let log of res) {
                 if (logs.has(`#${log['timestamp']}`).length === 0) {
                     const log_record = `<div id="${log['timestamp']}" class="${log['level']}">${log["msg"]}</div>`;

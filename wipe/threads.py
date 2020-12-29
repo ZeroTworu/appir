@@ -1,6 +1,6 @@
 import logging
 from threading import Barrier, Thread
-from typing import Dict, Optional
+from typing import List, Optional
 
 from selenium.common.exceptions import InvalidSessionIdException
 from wipe.params import PreparedStrategy
@@ -28,8 +28,7 @@ class WipeThread(Thread):
 
 
 class WipeThreadManager(object):
-
-    threads: Dict[int, WipeThread] = {}
+    threads: List[WipeThread] = []
 
     def __init__(self, strategy: PreparedStrategy, threads_count: int = 1):
         self.prepared_strategy = strategy
@@ -42,13 +41,14 @@ class WipeThreadManager(object):
     def start(self):
         for num in range(self.threads_count):
             thread = WipeThread(strategy=self.prepared_strategy, name=f'Wipe Thread №{num}', barrier=self.barrier)
-            self.threads[num] = thread
+            self.threads.append(thread)
             thread.start()
-        if self.barrier:
+
+        if self.barrier is not None:
             self.barrier.wait()
 
-    def stop_all(self):
-        for thread in self.threads.items():
+    def stop(self):
+        for thread in self.threads:
             thread.stop()
 
     def stop_thread(self, num: int):
