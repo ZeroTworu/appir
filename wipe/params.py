@@ -1,27 +1,26 @@
-import logging
+from dataclasses import dataclass
+from logging import Logger
 from multiprocessing import Barrier
+from typing import Callable, Optional
 
-import attr
 
-
-@attr.s
+@dataclass
 class WipeParams(object):
-    room_url: str = attr.ib()
-    sid: str = attr.ib()
+    room_url: str
 
-    browser: str = attr.ib(default='firefox')
-    headless: bool = attr.ib(default=True)
-    fake_media: bool = attr.ib(default=True)
-    others_params: dict = attr.ib(default={})
-    logger: logging = attr.ib(default=None)
-    generator: str = attr.ib(default='zalgo')
-    generator_length: int = attr.ib(default=10)
-    max_users: int = attr.ib(default=12)
-    barrier: Barrier = attr.ib(default=None)
-    use_barrier: bool = attr.ib(default=False)
+    browser: str = 'firefox'
+    headless: bool = True
+    fake_media: bool = True
+    others_params: Optional[dict] = None
+    generator: str = 'zalgo'
+    generator_length: int = 10
+    max_users: int = 12
+    barrier: Barrier = None
+    use_barrier: bool = False
+    logger: Logger = None
 
 
-@attr.s
+@dataclass
 class PreparedStrategy(object):
-    params: WipeParams = attr.ib()
-    strategy_class = attr.ib()
+    params: WipeParams
+    strategy_class: Callable

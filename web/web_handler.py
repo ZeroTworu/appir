@@ -1,27 +1,20 @@
 import json
 import logging
-import uuid
 from typing import List
 
 from flask import Flask, jsonify, render_template, request
-from flask_classy import FlaskView, route
-from web.web_log_handler import WebLogHandler, WipeLogRecordEncoder
 from wipe import __version__
+from wipe.logger import WipeLogRecordEncoder
 from wipe.params import PreparedStrategy, WipeParams
 from wipe.strategies import STRATEGIES
 from wipe.threads import WipeThreadManager
 
 app = Flask(__name__)
 
-logging.basicConfig(format='%(threadName)s-%(asctime)s: %(message)s', level=logging.INFO, datefmt='%H:%M:%S')
-logging.getLogger('urllib3.connectionpool').setLevel(logging.CRITICAL)
-
-logger = logging.getLogger(__name__)
-wh = WebLogHandler()
-logger.addHandler(wh)
-
 flask_log = logging.getLogger('werkzeug')
 flask_log.setLevel(logging.ERROR)
+
+manager: WipeThreadManager = None
 
 
 def validate(form_data) -> List[str]:
@@ -33,60 +26,55 @@ def validate(form_data) -> List[str]:
     return errors
 
 
-class WebHandler(FlaskView):
-    route_base = '/'
+@app.route('/', methods=['GET'])
+def index():
+    params = {
+        'version': __version__,
+        'strategies': STRATEGIES,
+    }
+    return render_template('index.html', **params)
 
-    def __init__(self):
-        self.manager = None
-        self.form_data = None
 
-    def index(self):
-        params = {
-            'version': __version__,
-            'strategies': STRATEGIES,
-            'sid': f'{uuid.uuid4()}',
-        }
-        return render_template('index.html', **params)
+@app.route('/wipe/', methods=['POST'])
+def wipe():  # noqa:  WPS210
+    global manager  # noqa: WPS420
+    form_data = request.json
+    errors = validate(form_data)
+    if bool(errors):
+        return jsonify({'status': 'error', 'errors': errors})
 
-    @route('/wipe/', methods=['POST'])
-    def wipe(self):
-        self.form_data = request.json
-        errors = validate(self.form_data)
-        if bool(errors):
-            return jsonify({'status': 'error', 'errors': errors})
+    strategy_class = STRATEGIES.get(form_data['wipe_type'], None)
 
-        strategy_class = STRATEGIES.get(self.form_data['wipe_type'], None)
+    if strategy_class is None:
+        logging.error('Wrong strategy %s, write it by you self!', form_data['wipe_type'])
+        return jsonify({'status': 'error'})
 
-        if strategy_class is None:
-            logging.error('Wrong strategy %s, write it by you self!', self.form_data['wipe_type'])
-            return jsonify({'status': 'error'})
+    wipe_params = WipeParams(
+        room_url=form_data['room_url'],
+        browser=form_data['browser'],
+        fake_media=form_data.get('fake_media', 'off') == 'on',
+        headless=True,
+        others_params={'link': form_data.get('youtube_url', None)},
+    )
 
-        wipe_params = WipeParams(
-            room_url=self.form_data['room_url'],
-            sid=self.form_data['sid'],
-            browser=self.form_data['browser'],
-            fake_media=self.form_data.get('fake_media', 'off') == 'on',
-            headless=True,
-            others_params={'link': self.form_data.get('youtube_url', None)},
-            logger=logger,
-        )
+    strategy = PreparedStrategy(params=wipe_params, strategy_class=strategy_class)
+    manager = WipeThreadManager(strategy=strategy, threads_count=int(form_data.get('threads', 1)))  # noqa: WPS442
+    manager.start()
+    return jsonify({'status': 'started'})
 
-        strategy = PreparedStrategy(params=wipe_params, strategy_class=strategy_class)
-        self.manager = WipeThreadManager(strategy=strategy, threads_count=int(self.form_data.get('threads', 1)))
-        self.manager.start()
-        return jsonify({'status': 'started'})
 
-    @route('/status/<sid>')
-    def status(self, sid):
-        logs = WebLogHandler.get_logs(sid)
+@app.route('/status/', methods=['GET'])
+def status():
+    if manager is not None:
+        logs = manager.get_logs()
         return json.dumps(logs, cls=WipeLogRecordEncoder)
-
-    @route('/stop/<sid>')
-    def stop(self, sid):
-        self.manager.stop()
-        logger.info('Wipe stopped for %s', sid)
-        WebLogHandler.clear_logs(sid)
-        return jsonify({'status': 'stopped'})
+    return json.dumps([])
 
 
-WebHandler.register(app)
+@app.route('/stop/', methods=['GET'])
+def stop():
+    manager.stop()
+    manager.logger.info('Wipe stopped.')
+    manager.stop()
+    manager.clear_logs()
+    return jsonify({'status': 'stopped'})

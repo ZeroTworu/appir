@@ -20,7 +20,7 @@ class AbstractWipeStrategy(Appir):  # noqa:  WPS214
         self._is_waiting_ban = False
 
         self.seh = StructureExceptionHandler(
-            logger=params.logger,
+            logger=self._logger,
             exc_callback=self.re_start,
             normal_callback=self.driver.quit,
         )
@@ -48,7 +48,7 @@ class AbstractWipeStrategy(Appir):  # noqa:  WPS214
         self.is_working = False
         time.sleep(self.max_timeout)
         self.driver.quit()
-        self._logger.info('Stopped sid %s', self._sid)
+        self._logger.info('Stopped')
 
     def wait_ban(self):
         while self._is_waiting_ban and self.is_working:

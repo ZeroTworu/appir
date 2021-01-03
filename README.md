@@ -56,7 +56,8 @@ docker run -p 5000:5000 hanyuu/wwipe:<нужная версия>
 * Устанавливаем `git` для винды [тут](https://git-scm.com/download/win) линуксоиды как обычно идут в свой менеджер
   пакетов.
 * открываем коммандную строку (`пуск->выполнить->cmd`)
-  * пишем `git clone git@github.com:Hanyuusha/wwipe.git`
+  * пишем `git https://github.com/Hanyuusha/wwipe.git`
+  * Переходим в склонированную директорию с вайпалкой.
   * `pip install poetry`
   * `poetry install`
 * Пример запуска `python main.py fill https://whereby.com/123 --headless=1 --fake-media=1 --browser=chrome`

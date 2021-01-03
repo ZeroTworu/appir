@@ -1,7 +1,6 @@
 $(document).ready(() => {
     const start_btn = $('#start');
     const stop_btn = $('#stop');
-    const sid = $('#sid').val()
     let update_interval;
     start_btn.bind('click', () => {
         let form_data = getFormData($('#send_form'));
@@ -28,7 +27,7 @@ $(document).ready(() => {
     })
 
     stop_btn.bind('click', () => {
-        $.getJSON(`/stop/${sid}`, (res) => {
+        $.getJSON(`/stop/`, (res) => {
             switch (res['status']) {
                 case 'stopped':
                     change_btns(false)
@@ -53,16 +52,19 @@ function show_errors(errors) {
 }
 
 function update_status() {
+    let offset = 0;
+    let count = 5;
     const sid = $('#sid').val()
     const logs = $('#logs');
     const handler = () => {
-        $.getJSON(`/status/${sid}`, (res) => {
+        $.getJSON(`/status/`, (res) => {
             for (let log of res) {
                 if (logs.has(`#${log['timestamp']}`).length === 0) {
                     const log_record = `<div id="${log['timestamp']}" class="${log['level']}">${log["msg"]}</div>`;
                     logs.append(log_record)
                 }
             }
+            count += 5
         })
     }
     return setInterval(handler, 1000)

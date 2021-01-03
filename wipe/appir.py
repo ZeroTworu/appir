@@ -34,23 +34,18 @@ class Appir(object):  # noqa: WPS214
     def __init__(self, params: WipeParams):
         self._params = params
         self._browser = params.browser
-        self._sid = params.sid
         self._room_url: str = params.room_url
         self._barrier = params.barrier
-
-        if params.logger is not None:
-            self._logger = params.logger
-        else:
-            self._logger = logging.getLogger(__name__)
-
-        self._logger.setLevel(logging.DEBUG)
+        self._logger = params.logger
         self._opened_new_tab = False
+        self._logger.setLevel(logging.DEBUG)
+
         generator = NameGenerator(params.generator, params.generator_length)
         self._generator = generator.get_generator()
 
         self._driver_class = drivers.get(params.browser.lower(), None)
         if self._driver_class is None:
-            logging.error('Unknown browser %s', params.browser)
+            self._logger.error('Unknown browser %s', params.browser)
             return
 
         self.is_working = True

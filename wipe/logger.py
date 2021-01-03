@@ -1,15 +1,14 @@
 import json
-from logging import LogRecord, StreamHandler
+from dataclasses import dataclass
+from logging import Formatter, LogRecord, StreamHandler
 from typing import List
 
-import attr
 
-
-@attr.s
+@dataclass
 class WipeLogRecord(object):
-    msg: str = attr.ib()
-    level: str = attr.ib()
-    timestamp: int = attr.ib()
+    msg: str
+    level: str
+    timestamp: int
 
 
 class WipeLogRecordEncoder(json.JSONEncoder):
@@ -22,27 +21,28 @@ class WipeLogRecordEncoder(json.JSONEncoder):
         }
 
 
-class WebLogHandler(StreamHandler):
+class WipeLogHandler(StreamHandler):
     logs: List[WipeLogRecord] = []
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.formatter = Formatter(fmt='%(threadName)s %(asctime)s: %(message)s', datefmt='%H:%M:%S')
 
     def emit(self, record: LogRecord) -> None:
         msg = self.format(record)
 
         w_record = WipeLogRecord(
-            msg=f'{record.threadName} {msg}',
+            msg=msg,
             level=record.levelname,
             timestamp=int(record.created * 1000),
         )
 
         self.logs.append(w_record)
-        super().emit(record)
 
-    @classmethod
-    def get_logs(cls, user_id: str):
-        logs = cls.logs
+    def get_logs(self):
+        logs = self.logs
         logs.sort(key=lambda obj: obj.timestamp, reverse=True)
         return logs
 
-    @classmethod
-    def clear_logs(cls, user_id: str):
-        cls.logs = []
+    def clear_logs(self):
+        self.logs.clear()

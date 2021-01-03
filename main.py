@@ -1,16 +1,11 @@
 import argparse
 import logging
-import uuid
 from argparse import RawTextHelpFormatter
 
 from wipe import __version__
 from wipe.params import PreparedStrategy, WipeParams
 from wipe.strategies import STRATEGIES
 from wipe.threads import WipeThreadManager
-
-logging.basicConfig(format='%(threadName)s-%(asctime)s: %(message)s', level=logging.INFO, datefmt='%H:%M:%S')
-
-logging.getLogger('urllib3.connectionpool').setLevel(logging.CRITICAL)
 
 
 def handle_main(args):
@@ -30,7 +25,6 @@ def handle_main(args):
         others_params={'link': args.link, 'file': args.file, 'phrase': args.phrase},
         max_users=args.max_users,
         use_barrier=args.use_barrier == '1',
-        sid=f'{uuid.uuid4()}',
     )
 
     strategy = PreparedStrategy(params=wipe_params, strategy_class=strategy_class)
