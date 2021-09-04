@@ -190,11 +190,6 @@ class Appir(object):  # noqa: WPS214
     def refresh_room(self):
         self._logger.info('Refreshing room...')
         self.driver.refresh()
-        self.enter_login(self._generator())
-        if self.is_firefox:
-            if not self.join_room():
-                self._logger.warning('Cannot refresh room, re-enter...')
-                self.enter_room(self._room_url)
 
     def exit_room(self) -> None:
         current_window = self.driver.current_window_handle
